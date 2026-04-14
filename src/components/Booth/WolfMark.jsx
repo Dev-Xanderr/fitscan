@@ -6,7 +6,8 @@
  *   - "black" for light surfaces (e.g. the QR card)
  */
 export default function WolfMark({ size = 48, variant = 'white', className = '', style }) {
-  const src = variant === 'black' ? '/brand/icon-black.png' : '/brand/icon-white.png';
+  const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+  const src = variant === 'black' ? `${base}/brand/icon-black.png` : `${base}/brand/icon-white.png`;
   return (
     <img
       src={src}
