@@ -1,19 +1,14 @@
 import { useEffect, useState } from 'react';
-import { useLocation } from 'react-router-dom';
 import LZString from 'lz-string';
 import useScanStore from '../../context/ScanContext';
 import BoothRoutine from './BoothRoutine';
 
 export default function RoutineViewer() {
-  const location = useLocation();
   const [error, setError] = useState(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    // Use React Router's location.hash — more reliable than window.location.hash
-    // Also fall back to window.location.hash in case router strips it
-    const raw = location.hash || window.location.hash || '';
-    const hash = raw.replace(/^#/, '');
+    const hash = new URLSearchParams(window.location.search).get('r') || '';
 
     if (!hash) {
       setError('No routine data in this link.');
@@ -90,7 +85,7 @@ export default function RoutineViewer() {
             {error}
           </p>
           <p className="text-[#FAFAFA]/20 text-[10px]" style={{ fontFamily: "'Azeret Mono', monospace" }}>
-            hash len: {(location.hash || window.location.hash || '').length}
+            data len: {(new URLSearchParams(window.location.search).get('r') || '').length}
           </p>
         </div>
       </div>

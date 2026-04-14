@@ -6,18 +6,22 @@ import RoutineViewer from './components/Booth/RoutineViewer';
 import CameraView from './components/Camera/CameraView';
 
 export default function App() {
+  // If URL has ?r=... it's a phone QR scan — render viewer directly.
+  // This works on GitHub Pages since the root path always loads fine.
+  if (new URLSearchParams(window.location.search).has('r')) {
+    return (
+      <ScanProvider>
+        <RoutineViewer />
+      </ScanProvider>
+    );
+  }
+
   return (
     <ScanProvider>
       <Routes>
-        {/* === BOOTH FLOW (runs on the booth laptop in kiosk mode) === */}
         <Route path="/" element={<BoothLanding />} />
         <Route path="/scan" element={<CameraView />} />
         <Route path="/routine" element={<BoothRoutine />} />
-
-        {/* === VIEWER (loaded on the visitor's PHONE via QR code) === */}
-        <Route path="/r" element={<RoutineViewer />} />
-
-        {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </ScanProvider>

@@ -86,11 +86,11 @@ export default function BoothRoutine({ phoneMode = false }) {
     const compressed = LZString.compressToEncodedURIComponent(JSON.stringify(payload));
     const publicBase = import.meta.env.VITE_PUBLIC_URL;
     const base = publicBase
-      ? `${publicBase.replace(/\/$/, '')}/r`
+      ? publicBase.replace(/\/$/, '')
       : typeof window !== 'undefined'
-        ? `${window.location.origin}/r`
-        : '/r';
-    return `${base}#${compressed}`;
+        ? window.location.origin + (import.meta.env.BASE_URL || '').replace(/\/$/, '')
+        : '';
+    return `${base}/?r=${compressed}`;
   }, [routine, boothGoal, bodyType, frameSize]);
 
   // All hooks must be called before any early returns
