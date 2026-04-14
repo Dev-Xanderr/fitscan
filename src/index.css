@@ -1,0 +1,102 @@
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Manrope:wght@300;400;500;600;700&family=Azeret+Mono:wght@400;500;600&display=swap');
+@import "tailwindcss";
+
+:root {
+  --accent: #B93A32;          /* SQUATWOLF Accent */
+  --accent-light: #d04a40;
+  --accent-dark: #8f2a24;
+  --bg: #121212;              /* SQUATWOLF Black */
+  --surface: #1a1a1a;
+  --surface-light: #222222;
+  --text: #FAFAFA;            /* SQUATWOLF White */
+  --text-muted: #7A7A7A;      /* Support Grey Dark */
+  --grey-light: #EFEFEF;      /* Support Grey Light */
+  --font-heading: 'Barlow Condensed', sans-serif;
+  --font-body: 'Manrope', sans-serif;
+  --font-ui: 'Azeret Mono', monospace;
+}
+
+/* NOTE: Tailwind v4's preflight already handles box-sizing and margin/padding
+   resets. A user-level `* { padding: 0 }` rule lives OUTSIDE the utilities
+   cascade layer and wins over `.px-*` classes, silently killing padding across
+   the whole app. Do not reintroduce. */
+
+html, body {
+  font-family: var(--font-body);
+  background-color: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+/* Subtle film grain — Dubai sandstorm vibe */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 3px; }
+
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+.glow-accent {
+  box-shadow: 0 0 30px rgba(185, 58, 50, 0.35), 0 0 80px rgba(185, 58, 50, 0.12);
+}
+
+.glow-text {
+  text-shadow: 0 0 24px rgba(185, 58, 50, 0.55);
+}
+
+.glass {
+  background: rgba(250, 250, 250, 0.04);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(250, 250, 250, 0.08);
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+.pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+
+@keyframes count-up {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes attract-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.04); opacity: 1; }
+}
+.attract-pulse { animation: attract-pulse 2.4s ease-in-out infinite; }
+
+@keyframes ken-burns {
+  0% { transform: scale(1) translate(0, 0); }
+  100% { transform: scale(1.08) translate(-1%, -1%); }
+}
+.ken-burns { animation: ken-burns 18s ease-in-out infinite alternate; }
+
+/* Booth-only: hide cursor for kiosk feel */
+.booth-kiosk, .booth-kiosk * { cursor: none !important; }

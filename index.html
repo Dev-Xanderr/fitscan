@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/png" href="/brand/icon-black.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SQUATWOLF FitScanner</title>
+    <meta name="description" content="AI-powered body scanning meets sports science. Get a workout routine designed around your unique proportions." />
+    <meta name="theme-color" content="#121212" />
+    <script>
+      // GitHub Pages SPA — restore path from 404 redirect
+      (function() {
+        var p = window.location.search.slice(1).split('&').reduce(function(q, s) {
+          var a = s.split('='); q[a[0]] = a.slice(1).join('=').replace(/~and~/g, '&'); return q;
+        }, {});
+        if (p.p !== undefined) {
+          window.history.replaceState(null, null,
+            '/' + p.p.replace(/~and~/g, '&') + (p.q ? '?' + p.q.replace(/~and~/g, '&') : '') +
+            window.location.hash
+          );
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
