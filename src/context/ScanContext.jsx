@@ -42,6 +42,7 @@ const useScanStore = create((set) => ({
 
   // Actions
   setUserInfo: (info) => set((s) => ({ userInfo: { ...s.userInfo, ...info } })),
+  setGender: (gender) => set((s) => ({ userInfo: { ...s.userInfo, gender } })),
   setBoothGoal: (boothGoal) => {
     // Map UI goal → underlying userInfo.fitnessGoals so the generator picks it up
     const map = {

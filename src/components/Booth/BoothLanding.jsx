@@ -1,37 +1,30 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import useScanStore from '../../context/ScanContext';
 import WolfMark from './WolfMark';
+import { loadPoseDetector } from '../../services/poseService';
 
-/**
- * BoothLanding — the idle/attract screen for the SQUATWOLF event booth.
- *
- * Designed for a single-tap interaction at a busy event:
- *   1. Fullscreen, high-contrast attract-mode visuals
- *   2. Pick a goal (Build Muscle / Get Lean) → routes straight to /scan
- *   3. No forms, no friction
- *
- * Layout is inspired by the TITAN fitness landing: massive Bebas headline on
- * the left, feature cards on the right, dim radial gradient behind everything.
- */
 export default function BoothLanding() {
   const navigate = useNavigate();
-  const { setBoothGoal, reset } = useScanStore();
+  const { setBoothGoal, setGender, reset } = useScanStore();
+  const [gender, setLocalGender] = useState('male');
 
-  // Make sure each new visitor starts from a clean slate
   useEffect(() => {
     reset();
+    // Preload the AI model in the background so camera opens instantly
+    loadPoseDetector().catch(() => {});
   }, [reset]);
 
   const pickGoal = (goal) => {
+    setGender(gender);
     setBoothGoal(goal);
     navigate('/scan');
   };
 
   return (
     <div className="min-h-screen w-full flex flex-col px-10 sm:px-16 lg:px-24 py-12 lg:py-14 relative overflow-hidden bg-[#121212] text-[#FAFAFA]">
-      {/* Background gradient — Aurora Red glow over deep black */}
+      {/* Background gradient */}
       <div
         className="absolute inset-0 -z-10"
         style={{
@@ -39,7 +32,6 @@ export default function BoothLanding() {
             'radial-gradient(ellipse at 75% 20%, rgba(185,58,50,0.28) 0%, rgba(0,0,0,1) 55%), radial-gradient(ellipse at 10% 90%, rgba(185,58,50,0.12) 0%, rgba(0,0,0,0) 50%)',
         }}
       />
-      {/* Subtle grid texture */}
       <div
         className="absolute inset-0 -z-10 opacity-[0.04]"
         style={{
@@ -48,7 +40,7 @@ export default function BoothLanding() {
         }}
       />
 
-      {/* Top nav bar */}
+      {/* Top nav */}
       <motion.div
         className="w-full flex items-center justify-between"
         initial={{ opacity: 0, y: -20 }}
@@ -57,10 +49,7 @@ export default function BoothLanding() {
       >
         <div className="flex items-center gap-3">
           <WolfMark size={44} />
-          <span
-            className="text-xl tracking-[0.35em]"
-            style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
-          >
+          <span className="text-xl tracking-[0.35em]" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>
             SQUATWOLF
           </span>
         </div>
@@ -72,7 +61,7 @@ export default function BoothLanding() {
         </div>
       </motion.div>
 
-      {/* Main content */}
+      {/* Main grid */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-10 items-center mt-8">
         {/* LEFT — hero copy */}
         <div>
@@ -109,21 +98,60 @@ export default function BoothLanding() {
           </motion.p>
         </div>
 
-        {/* RIGHT — goal buttons */}
+        {/* RIGHT — gender + goal */}
         <motion.div
           className="flex flex-col gap-5 items-stretch"
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.5, duration: 0.7 }}
         >
+          {/* Gender toggle */}
+          <div>
+            <p
+              className="text-[#FAFAFA]/40 text-[10px] tracking-[0.3em] uppercase mb-3"
+              style={{ fontFamily: "'Azeret Mono', monospace" }}
+            >
+              I am
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              {['male', 'female'].map((g) => (
+                <button
+                  key={g}
+                  onClick={() => setLocalGender(g)}
+                  className={`py-3 rounded-none transition-all border text-sm tracking-[0.15em] uppercase ${
+                    gender === g
+                      ? 'bg-[#B93A32] border-[#B93A32] text-[#FAFAFA]'
+                      : 'border-[#FAFAFA]/20 text-[#FAFAFA]/50 hover:border-[#FAFAFA]/40'
+                  }`}
+                  style={{ fontFamily: "'Azeret Mono', monospace" }}
+                >
+                  {g === 'male' ? 'Male' : 'Female'}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3">
+            <span className="flex-1 h-px bg-[#FAFAFA]/10" />
+            <span
+              className="text-[#FAFAFA]/30 text-[10px] tracking-[0.3em] uppercase"
+              style={{ fontFamily: "'Azeret Mono', monospace" }}
+            >
+              Goal
+            </span>
+            <span className="flex-1 h-px bg-[#FAFAFA]/10" />
+          </div>
+
+          {/* Goal buttons */}
           <GoalButton
             label="BUILD MUSCLE"
-            sub="Strength · Size · Power"
+            sub={gender === 'female' ? 'Glutes · Legs · Tone' : 'Strength · Size · Power'}
             onClick={() => pickGoal('build-muscle')}
           />
           <GoalButton
             label="GET LEAN"
-            sub="Burn · Define · Endurance"
+            sub={gender === 'female' ? 'Burn · Shape · Define' : 'Burn · Define · Endurance'}
             onClick={() => pickGoal('lose-fat')}
           />
         </motion.div>

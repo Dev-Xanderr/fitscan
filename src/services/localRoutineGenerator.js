@@ -292,9 +292,33 @@ const COOLDOWNS = {
 
 // ============================= SPLIT PATTERNS ==============================
 
-function getSplitPattern(experienceLevel, goals, daysAvailable, bodyType) {
+function getSplitPattern(experienceLevel, goals, daysAvailable, bodyType, gender) {
   const wantsFatLoss = goals.includes('lose-fat');
   const wantsAthleticism = goals.includes('athletic') || goals.includes('stay-active');
+  const isFemale = (gender || '').toLowerCase() === 'female';
+
+  // ---------- FEMALE SPLITS — glute/leg focus, upper body toning ----------
+  if (isFemale) {
+    if (wantsFatLoss) {
+      return {
+        days: [
+          { day: 'Monday', focus: 'Glutes & Lower Burn', muscleGroups: ['glutes', 'hamstrings', 'quads', 'conditioning'], warmupType: 'lower', cooldownType: 'lower' },
+          { day: 'Tuesday', focus: 'Upper Tone & Core', muscleGroups: ['shoulders', 'back', 'core', 'conditioning'], warmupType: 'upper', cooldownType: 'upper' },
+          { day: 'Thursday', focus: 'Quad & Glute Circuit', muscleGroups: ['quads', 'glutes', 'conditioning', 'core'], warmupType: 'lower', cooldownType: 'cardio' },
+          { day: 'Friday', focus: 'Full-Body Burn', muscleGroups: ['conditioning', 'glutes', 'shoulders', 'core'], warmupType: 'cardio', cooldownType: 'full' },
+        ],
+      };
+    }
+    // Female build/tone
+    return {
+      days: [
+        { day: 'Monday', focus: 'Glutes & Hamstrings', muscleGroups: ['glutes', 'hamstrings', 'core', 'calves'], warmupType: 'lower', cooldownType: 'lower' },
+        { day: 'Tuesday', focus: 'Upper Body Tone', muscleGroups: ['shoulders', 'back', 'triceps', 'biceps'], warmupType: 'upper', cooldownType: 'upper' },
+        { day: 'Thursday', focus: 'Quads & Glutes', muscleGroups: ['quads', 'glutes', 'hamstrings', 'core'], warmupType: 'lower', cooldownType: 'lower' },
+        { day: 'Friday', focus: 'Shoulders & Core', muscleGroups: ['shoulders', 'core', 'glutes', 'back'], warmupType: 'upper', cooldownType: 'full' },
+      ],
+    };
+  }
 
   // ---------- LOSE-FAT track (metabolic, full-body, conditioning) ----------
   if (wantsFatLoss) {
@@ -693,7 +717,7 @@ function analyseProportions(metrics, frameSize, gender) {
   }
 
   // Gender-aware glute/posterior priority
-  if (gender === 'Female') {
+  if ((gender || '').toLowerCase() === 'female') {
     biases.prioritise.push('glutes', 'hamstrings');
   }
 
@@ -997,7 +1021,7 @@ export async function generateLocalRoutine(userInfo, analysisData) {
   // ---- Derive strategies ----
   const strategy = getBodyTypeStrategy(btKey, goals);
   const { insights, biases } = analyseProportions(metrics, frameSize, gender);
-  const split = getSplitPattern(level, goals, 4, btKey);
+  const split = getSplitPattern(level, goals, 4, btKey, gender);
   const goalBias = getGoalExerciseBias(goals);
   const bodyBias = getBodyTypeBias(btKey);
   const injuryExclusions = getInjuryExclusions(injuries);

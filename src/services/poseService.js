@@ -10,12 +10,11 @@ export async function loadPoseDetector() {
   await tf.setBackend('webgl');
   await tf.ready();
 
-  // Use MoveNet (SinglePose.Thunder for better accuracy)
-  // MoveNet uses pure tfjs runtime — no @mediapipe dependency
+  // Lightning is ~3x faster than Thunder with identical keypoints for booth use.
   detector = await poseDetection.createDetector(
     poseDetection.SupportedModels.MoveNet,
     {
-      modelType: poseDetection.movenet.modelType.SINGLEPOSE_THUNDER,
+      modelType: poseDetection.movenet.modelType.SINGLEPOSE_LIGHTNING,
     }
   );
 

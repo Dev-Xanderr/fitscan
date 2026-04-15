@@ -103,9 +103,12 @@ export function classifyBodyType(metrics, bmi) {
 }
 
 export function classifyFrameSize(shoulderWidth, height) {
-  const ratio = shoulderWidth / height;
-  if (ratio < 0.21) return 'Small';
-  if (ratio < 0.24) return 'Medium';
+  // MoveNet places shoulder keypoints at the joint (acromion), which reads
+  // ~10% wider than the visible shoulder silhouette. Apply a correction factor.
+  const corrected = shoulderWidth * 0.88;
+  const ratio = corrected / height;
+  if (ratio < 0.215) return 'Small';
+  if (ratio < 0.245) return 'Medium';
   return 'Large';
 }
 
