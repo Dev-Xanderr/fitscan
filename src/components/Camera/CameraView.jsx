@@ -198,66 +198,55 @@ export default function CameraView() {
       setScanStatus('camera');
       setStatusMsg('Starting camera...');
 
-      // Step 1: Get camera — retry up to 3 times
-      let stream = null;
-      let cameraError = null;
-
-      for (let attempt = 0; attempt < 3; attempt++) {
-        try {
-          // Try different constraints on each attempt
-          const constraints = attempt === 0
-            ? { video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } }
-            : attempt === 1
-            ? { video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } } }
-            : { video: true };
-
-          stream = await navigator.mediaDevices.getUserMedia(constraints);
-          cameraError = null;
-          break;
-        } catch (err) {
-          cameraError = err;
-          console.warn(`Camera attempt ${attempt + 1} failed:`, err.name, err.message);
-          // Small delay before retry
-          if (attempt < 2) await new Promise((r) => setTimeout(r, 500));
+      // Run camera + model loading IN PARALLEL — whichever takes longer is the bottleneck,
+      // not the sum of both. If the model was preloaded on the landing page it resolves instantly.
+      const cameraPromise = (async () => {
+        for (let attempt = 0; attempt < 3; attempt++) {
+          try {
+            const constraints = attempt === 0
+              ? { video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } }
+              : attempt === 1
+              ? { video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } } }
+              : { video: true };
+            return await navigator.mediaDevices.getUserMedia(constraints);
+          } catch (err) {
+            console.warn(`Camera attempt ${attempt + 1} failed:`, err.name);
+            if (attempt < 2) await new Promise((r) => setTimeout(r, 400));
+            if (attempt === 2) throw err;
+          }
         }
-      }
+      })();
 
-      if (!mountedRef.current) {
-        if (stream) stream.getTracks().forEach((t) => t.stop());
-        return;
-      }
+      const modelPromise = loadPoseDetector();
 
-      if (!stream) {
-        console.error('All camera attempts failed:', cameraError);
-        setError(cameraError?.message || 'Camera access denied');
+      let stream, detector;
+      try {
+        [stream, detector] = await Promise.all([cameraPromise, modelPromise]);
+      } catch (err) {
+        if (!mountedRef.current) return;
+        setError(err.message || 'Camera or model failed to load');
         setLoading(false);
         setShowFallback(true);
         return;
       }
 
-      streamRef.current = stream;
+      if (!mountedRef.current) {
+        stream?.getTracks().forEach((t) => t.stop());
+        return;
+      }
 
+      // Attach stream to video element
+      streamRef.current = stream;
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
-
-        // Wait for video to actually be ready
         await new Promise((resolve) => {
           const video = videoRef.current;
           if (!video) { resolve(); return; }
-
-          if (video.readyState >= 2) {
-            resolve();
-          } else {
-            const onReady = () => {
-              video.removeEventListener('loadeddata', onReady);
-              resolve();
-            };
-            video.addEventListener('loadeddata', onReady);
-            video.play().catch(() => {});
-          }
-
-          // Safety timeout
-          setTimeout(resolve, 5000);
+          if (video.readyState >= 2) { resolve(); return; }
+          const onReady = () => { video.removeEventListener('loadeddata', onReady); resolve(); };
+          video.addEventListener('loadeddata', onReady);
+          video.play().catch(() => {});
+          setTimeout(resolve, 4000);
         });
 
         if (!mountedRef.current) { stopStream(); return; }
@@ -265,42 +254,30 @@ export default function CameraView() {
         const vw = videoRef.current?.videoWidth || 640;
         const vh = videoRef.current?.videoHeight || 480;
         setVideoDims({ width: vw, height: vh });
-
         const containerWidth = Math.min(window.innerWidth - 32, 640);
-        const containerHeight = (vh / vw) * containerWidth;
-        setDimensions({ width: containerWidth, height: containerHeight });
+        setDimensions({ width: containerWidth, height: (vh / vw) * containerWidth });
         setCameraReady(true);
-        setStatusMsg('Camera ready! Loading AI model...');
       }
 
-      // Step 2: Load AI model
+      // Warm up WebGL shaders with a blank-canvas inference so the first real
+      // frame doesn't stutter while shaders compile.
       try {
-        setScanStatus('loading');
-        setStatusMsg('Loading AI pose detection model...');
+        const blank = document.createElement('canvas');
+        blank.width = 192; blank.height = 192;
+        await detector.estimatePoses(blank, { maxPoses: 1 });
+      } catch (_) { /* warmup failure is non-fatal */ }
 
-        const detector = await loadPoseDetector();
+      if (!mountedRef.current) return;
 
-        if (!mountedRef.current) return;
+      detectorRef.current = detector;
+      setLoading(false);
+      setScanStatus('searching');
+      setStatusMsg('Stand in frame — full body visible');
 
-        detectorRef.current = detector;
-        setLoading(false);
-        setScanStatus('searching');
-        setStatusMsg('Stand in frame — full body visible');
-
-        // Timeout fallback
-        timeoutRef.current = setTimeout(() => {
-          const status = useScanStore.getState().scanStatus;
-          if (status === 'searching' || status === 'loading') {
-            setShowFallback(true);
-          }
-        }, DETECTION_TIMEOUT);
-      } catch (err) {
-        console.error('Model load error:', err);
-        if (!mountedRef.current) return;
-        setError(`AI model failed to load: ${err.message}`);
-        setLoading(false);
-        setShowFallback(true);
-      }
+      timeoutRef.current = setTimeout(() => {
+        const status = useScanStore.getState().scanStatus;
+        if (status === 'searching' || status === 'loading') setShowFallback(true);
+      }, DETECTION_TIMEOUT);
     }
 
     init();
