@@ -41,35 +41,40 @@ export const POSE_CONNECTIONS = [
 // we count a frame as "still". Frame-to-frame metric, NOT averaged across
 // a long buffer.
 //
-// Generous bumps after each round of live tracing — kiosk visitors aren't
-// going to stand statue-still, and MoveNet keypoints jitter even on
-// motionless input. 20px per-keypoint per-frame is well below the per-
-// frame deltas of any deliberate movement (>40px/frame) but tolerant of
-// breathing, micro-sway, and detector noise.
-export const STABILITY_THRESHOLD = 20;
-// 2-second hold (was 3s). Visitors are willing to stand still, but every
-// extra second of "don't move" is one more chance for the detector to
-// hiccup and bounce them out. 2s is plenty for MoveNet to lock pose.
-export const STABILITY_DURATION = 2000;
+// Aggressively forgiving — kiosk visitors fidget, shift weight, breathe,
+// and MoveNet itself jitters even on motionless input. 35px per-keypoint
+// per-frame still rules out any deliberate movement (an arm raise is
+// >80px/frame at this video resolution) but happily ignores micro-sway,
+// shoulder breathing, and detector noise spikes.
+export const STABILITY_THRESHOLD = 35;
+// 1.5-second hold. Cut from 2s after another round of "still bouncing"
+// traces — every extra half-second is one more chance for the detector
+// to hiccup. 1.5s is the floor we can run while still feeling like a
+// deliberate "lock-on" rather than a snapshot.
+export const STABILITY_DURATION = 1500;
 // Number of prior frames we need before the stability check fires.
-export const STABILITY_FRAMES = 3;
+// Dropped to 2 so the very first viable frame-to-frame comparison
+// counts toward the hold instead of being thrown away as warm-up.
+export const STABILITY_FRAMES = 2;
 // How many consecutive "bad" frames we tolerate before breaking a HOLD.
 // Counts BOTH above-threshold avgDelta frames AND brief isFullBodyVisible
 // failures (transient confidence dips on a single keypoint). At ~30fps
-// this is ~500ms of noise tolerance — long enough to absorb sustained
-// MoveNet confidence flickers, short enough that an actual "user stepped
-// out" still resets the hold within half a second.
-export const STABILITY_BAD_FRAME_TOLERANCE = 15;
+// this is ~1s of noise tolerance — long enough to absorb sustained
+// MoveNet confidence dropouts when a visitor partially turns or a limb
+// dips into shadow, short enough that an actual "user stepped out" still
+// resets within a second.
+export const STABILITY_BAD_FRAME_TOLERANCE = 30;
 // Confidence threshold for counting a keypoint as "visible" in
 // isFullBodyVisible. Lower = more forgiving. MoveNet routinely returns
-// 0.2-0.3 on partially occluded ankles/knees, especially under booth
-// downlight; bumping the floor down to 0.2 stops those from failing the
-// full-body check.
-export const FULL_BODY_KEYPOINT_CONF = 0.2;
+// 0.15-0.25 on partially occluded ankles/knees under booth downlight;
+// the floor of 0.15 keeps those frames in the "good" bucket.
+export const FULL_BODY_KEYPOINT_CONF = 0.15;
 // Allow up to N of the 8 required body keypoints to fall below the
 // confidence floor before we declare the body "not fully visible".
-// Tolerates a single occluded knee/ankle without breaking the lock.
-export const FULL_BODY_MISSING_TOLERANCE = 1;
+// 3 of 8 means a visitor whose two ankles AND one knee are clipped or
+// shadowed STILL passes the visibility check — the four shoulder/hip
+// anchors plus one knee are enough to call the pose locked.
+export const FULL_BODY_MISSING_TOLERANCE = 3;
 export const DETECTION_TIMEOUT = 60000;
 
 // ── Stringly-typed enum centralization ───────────────────────────────────────

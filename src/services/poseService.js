@@ -64,15 +64,15 @@ const MOVENET_KEYPOINT_NAMES = [
  * occluded ankle or low-confidence knee under bad booth lighting would flip
  * the result to false for one frame, which the scan loop interpreted as the
  * visitor stepping out of frame. Now we tolerate up to `missingAllowed` of
- * the 8 required parts being below the confidence floor — a single dipped
- * limb won't kill a lock, but a body that's genuinely not in frame still
- * fails fast.
+ * the 8 required parts being below the confidence floor — a few dipped
+ * limbs won't kill a lock, but a body that's genuinely not in frame still
+ * fails fast (6+ missing out of 8).
  *
  * @param {Array<{name:string,score:number}>} keypoints
- * @param {number} [minConfidence=0.2] floor below which a keypoint counts as missing
- * @param {number} [missingAllowed=1] how many of the 8 may be missing and still pass
+ * @param {number} [minConfidence=0.15] floor below which a keypoint counts as missing
+ * @param {number} [missingAllowed=3] how many of the 8 may be missing and still pass
  */
-export function isFullBodyVisible(keypoints, minConfidence = 0.2, missingAllowed = 1) {
+export function isFullBodyVisible(keypoints, minConfidence = 0.15, missingAllowed = 3) {
   const requiredParts = [
     'left_shoulder', 'right_shoulder',
     'left_hip', 'right_hip',
