@@ -7,6 +7,11 @@ import { GOALS, ROUTES } from '../../utils/constants';
 import { SectionLabel, BracketFrame, TopBar, BottomBar } from '../UI/Telemetry';
 import ConsentGate from '../Privacy/ConsentGate';
 
+// Hero emblem — public/ asset served at the Vite base path. We recolor the
+// white PNG into accent red via CSS mask + background-color so we don't need
+// a separate red-tinted export (and don't have to hand-tune a hue-rotate).
+const EMBLEM_URL = `${import.meta.env.BASE_URL}brand/icon-white.png`;
+
 /**
  * Stage 01 — landing screen.
  *
@@ -78,9 +83,40 @@ export default function BoothLanding() {
       />
 
       {/* Main grid: hero (left) + selector rail (right) */}
-      <main className="flex-1 grid grid-cols-1 lg:grid-cols-[1.4fr_minmax(380px,1fr)] gap-12 lg:gap-20 items-center px-6 sm:px-10 lg:px-16 py-10 lg:py-12">
+      <main className="relative flex-1 grid grid-cols-1 lg:grid-cols-[1.4fr_minmax(380px,1fr)] gap-12 lg:gap-20 items-center px-6 sm:px-10 lg:px-16 py-10 lg:py-12">
+        {/* BRAND EMBLEM — Treatment A. Massive accent-red icon mark anchored
+            to the right of the hero column, bleeding behind the headline and
+            into the gap before the selector rail. Sits on z-0 so the headline
+            (z-10) and rail (z-10) read cleanly on top of it. Recolored from
+            the white PNG via mask + background-color. Hidden under lg so the
+            phone/tablet layout keeps its breathing room. */}
+        <motion.div
+          aria-hidden="true"
+          initial={{ opacity: 0, scale: 0.88, rotate: -14 }}
+          animate={{ opacity: 1, scale: 1, rotate: -6 }}
+          transition={{ delay: 0.2, duration: 1.4, ease: [0.16, 1, 0.3, 1] }}
+          className="hidden lg:block absolute pointer-events-none z-0"
+          style={{
+            top: '6%',
+            right: '18%',
+            width: 'min(640px, 52vw)',
+            aspectRatio: '1 / 1',
+            maskImage: `url(${EMBLEM_URL})`,
+            WebkitMaskImage: `url(${EMBLEM_URL})`,
+            maskRepeat: 'no-repeat',
+            WebkitMaskRepeat: 'no-repeat',
+            maskSize: 'contain',
+            WebkitMaskSize: 'contain',
+            maskPosition: 'center',
+            WebkitMaskPosition: 'center',
+            backgroundColor: '#B93A32',
+            filter: 'drop-shadow(0 0 80px rgba(185,58,50,0.45))',
+          }}
+        />
+
         {/* HERO */}
         <motion.div
+          className="relative z-10"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.7 }}
@@ -152,7 +188,7 @@ export default function BoothLanding() {
 
         {/* SELECTOR RAIL */}
         <motion.div
-          className="relative bg-bg/60 backdrop-blur-[1px] border border-text/10 p-6 sm:p-8"
+          className="relative z-10 bg-bg/60 backdrop-blur-[1px] border border-text/10 p-6 sm:p-8"
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.5, duration: 0.7 }}
@@ -193,13 +229,11 @@ export default function BoothLanding() {
             <SectionLabel n="02" title="GOAL" />
             <div className="space-y-3">
               <GoalButton
-                index="01"
                 label="BUILD MUSCLE"
                 sub={gender === 'female' ? 'Glutes · Legs · Tone' : 'Strength · Size · Power'}
                 onClick={() => pickGoal(GOALS.BUILD_MUSCLE)}
               />
               <GoalButton
-                index="02"
                 label="GET LEAN"
                 sub={gender === 'female' ? 'Burn · Shape · Define' : 'Burn · Define · Endurance'}
                 onClick={() => pickGoal(GOALS.LOSE_FAT)}
@@ -232,20 +266,19 @@ export default function BoothLanding() {
 }
 
 /**
- * Numbered, boxy goal selector. Hover fills the panel in accent and rounds the
- * corners 8px, matching the SQUATWOLF button spec across the rest of the app.
+ * Boxy goal selector. Hover fills the panel in accent and rounds the corners
+ * 8px, matching the SQUATWOLF button spec across the rest of the app. The
+ * leading numeric index was dropped — the two-option list reads cleaner without
+ * "01 / 02" pretending it's a longer enumerated set.
  */
-function GoalButton({ index, label, sub, onClick }) {
+function GoalButton({ label, sub, onClick }) {
   return (
     <motion.button
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.99 }}
       onClick={onClick}
-      className="group relative w-full grid grid-cols-[40px_1fr_auto] items-center gap-4 px-5 py-5 rounded-none hover:rounded-lg transition-all text-left border-2 border-text/15 bg-text/[0.02] text-text hover:bg-accent hover:border-accent hover:shadow-[0_0_60px_-10px_rgba(185,58,50,0.6)] cursor-pointer"
+      className="group relative w-full grid grid-cols-[1fr_auto] items-center gap-4 px-5 py-5 rounded-none hover:rounded-lg transition-all text-left border-2 border-text/15 bg-text/[0.02] text-text hover:bg-accent hover:border-accent hover:shadow-[0_0_60px_-10px_rgba(185,58,50,0.6)] cursor-pointer"
     >
-      <span className="font-ui text-[11px] tracking-[0.3em] text-accent group-hover:text-text/80 tabular-nums">
-        {index}
-      </span>
       <div>
         <div
           className="font-heading text-2xl sm:text-3xl leading-none"
