@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import useScanStore from '../../context/ScanContext';
 import Button from '../UI/Button';
@@ -12,50 +12,90 @@ import { STORAGE_KEYS } from '../../utils/constants';
  * been delivered a routine (the value transaction); we are not gating
  * anything behind this. They can ignore it and walk away with the QR.
  *
+ * Seamless-UX moves:
+ *   • Three fields (Name / Phone / Email) in one visual row so the form
+ *     reads as a single telemetry terminal, not a multi-step obligation.
+ *   • Gender is pre-filled from the landing selection (ScanContext.userInfo.gender)
+ *     and shown as a tap-to-swap chip — we don't double-ask for data we
+ *     already captured.
+ *   • Each input has the right `inputMode` so booth touchscreens surface
+ *     the numeric keypad on phone and the @-included keyboard on email.
+ *   • Enter advances: Name→Phone→Email→Submit. Never forces a thumb to
+ *     hunt for a "Next" button.
+ *   • No autofocus on mount — visitor taps first, so they're committed
+ *     before the virtual keyboard jumps up.
+ *   • Optimistic success state — "ON ITS WAY." flashes the instant they
+ *     tap SEND; the network round-trip is fire-and-forget behind it.
+ *
  * Submission strategy:
- *   • If VITE_LEAD_ENDPOINT is set → POST JSON to that URL.
+ *   • If VITE_LEAD_ENDPOINT is set → POST JSON to that URL. (Supabase
+ *     client takes over in Chunk 2.)
  *   • Whether or not the network call succeeds, the lead also writes to
  *     localStorage[STORAGE_KEYS.LEADS] as a JSON array, so an unattended
- *     kiosk doesn't lose leads if the network is flaky. The operator can
- *     drain leads at end of day via DevTools.
+ *     kiosk doesn't lose leads if the network is flaky.
  *
- * What we record:
- *   { email, name, marketingOptIn, capturedAt, bodyType, goal, source }
- *
- * What we deliberately do NOT record: the snapshot, the keypoints, or the
- * full generated routine. The routine itself rides home with the visitor
- * via the QR code; we don't need a copy.
+ * Payload shape — snake_case so it drops cleanly into a Supabase insert:
+ *   { name, email, phone, gender, marketing_opt_in, body_type, goal,
+ *     source, captured_at }
  */
 export default function LeadCapture() {
   const bodyType = useScanStore((s) => s.bodyType);
   const boothGoal = useScanStore((s) => s.boothGoal);
+  const gender = useScanStore((s) => s.userInfo?.gender);
+  const setGender = useScanStore((s) => s.setGender);
   const leadCaptured = useScanStore((s) => s.leadCaptured);
   const setLeadCaptured = useScanStore((s) => s.setLeadCaptured);
 
-  const [email, setEmail] = useState('');
   const [name, setName] = useState('');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
   const [optIn, setOptIn] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (!email.trim() || submitting) return;
+  // Refs let us hop focus forward on Enter without a click. Touchscreen
+  // typing is already slow enough without forcing the visitor to find the
+  // next field with their eyes.
+  const nameRef = useRef(null);
+  const phoneRef = useRef(null);
+  const emailRef = useRef(null);
 
-    setSubmitting(true);
+  const validate = () => {
+    if (!name.trim()) return 'Name is required';
+    if (!phone.trim() || digitsOnly(phone).length < 7) return 'Phone looks too short';
+    if (!email.trim() || !email.includes('@')) return 'Email looks off';
+    return null;
+  };
+
+  const handleSubmit = async (e) => {
+    if (e && e.preventDefault) e.preventDefault();
+    if (submitting) return;
+
+    const validationError = validate();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
     setError(null);
 
     const lead = {
+      name: name.trim(),
       email: email.trim().toLowerCase(),
-      name: name.trim() || null,
-      marketingOptIn: optIn,
-      capturedAt: new Date().toISOString(),
-      bodyType: bodyType || null,
+      phone: phone.trim(),
+      gender: normaliseGender(gender),
+      marketing_opt_in: optIn,
+      body_type: bodyType || null,
       goal: boothGoal || null,
       source: 'booth-fitscan',
+      captured_at: new Date().toISOString(),
     };
 
-    // Persist locally first — that's the safety net if the POST fails.
+    // Optimistic flip — the visitor sees "ON ITS WAY." instantly. If the
+    // network POST fails, it's still safe in localStorage for the operator
+    // to drain. No reason to make them wait on a spinner for an action
+    // whose failure mode is invisible to them.
+    setSubmitting(true);
+    setLeadCaptured(true);
     persistLeadLocally(lead);
 
     const endpoint = import.meta.env.VITE_LEAD_ENDPOINT;
@@ -68,14 +108,23 @@ export default function LeadCapture() {
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
       } catch (err) {
-        // Don't surface network errors to the visitor — the lead is already
-        // safe in localStorage. Just log it for the operator.
+        // Silent — the lead is already in localStorage. Log for the operator.
         console.warn('Lead endpoint failed (saved locally):', err);
       }
     }
 
     setSubmitting(false);
-    setLeadCaptured(true);
+  };
+
+  // Enter in field N → focus field N+1. Enter on the last field submits.
+  const onEnter = (e, next) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    if (next === 'submit') {
+      handleSubmit(e);
+    } else if (next?.current) {
+      next.current.focus();
+    }
   };
 
   return (
@@ -92,7 +141,7 @@ export default function LeadCapture() {
 
         <AnimatePresence mode="wait">
           {leadCaptured ? (
-            <SuccessState key="success" />
+            <SuccessState key="success" name={name} />
           ) : (
             <motion.form
               key="form"
@@ -101,41 +150,68 @@ export default function LeadCapture() {
               exit={{ opacity: 0 }}
               onSubmit={handleSubmit}
               noValidate
-              className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-8 items-end"
+              className="space-y-8"
             >
-              <div>
-                <h3 className="font-heading text-3xl sm:text-4xl text-text leading-none">
-                  ROUTINE TO YOUR
-                  <br />
-                  <span className="text-accent">INBOX.</span>
-                </h3>
-                <p className="font-body text-text/50 text-sm mt-3 max-w-md">
-                  Skip the QR if your phone's away. Drop your email and we'll
-                  send the full plan. Optional — the QR works either way.
-                </p>
-
-                <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <Field
-                    label="EMAIL"
-                    required
-                    type="email"
-                    inputMode="email"
-                    autoComplete="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@domain.com"
-                  />
-                  <Field
-                    label="FIRST NAME"
-                    type="text"
-                    autoComplete="given-name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="optional"
-                  />
+              {/* Hero row — headline left, gender chip right */}
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 lg:gap-10 items-start">
+                <div>
+                  <h3 className="font-heading text-3xl sm:text-4xl text-text leading-none">
+                    ROUTINE TO YOUR
+                    <br />
+                    <span className="text-accent">INBOX.</span>
+                  </h3>
+                  <p className="font-body text-text/50 text-sm mt-3 max-w-md">
+                    Drop your details and we'll send the full plan. The QR
+                    works either way — this just makes sure you don't lose
+                    the routine when you leave the booth.
+                  </p>
                 </div>
 
-                <label className="mt-5 flex items-start gap-3 cursor-pointer group">
+                <GenderChip gender={gender} onSwap={setGender} />
+              </div>
+
+              {/* Three-field row — Name · Phone · Email */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
+                <Field
+                  ref={nameRef}
+                  label="NAME"
+                  required
+                  type="text"
+                  autoComplete="given-name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  onKeyDown={(e) => onEnter(e, phoneRef)}
+                  placeholder="Alex"
+                />
+                <Field
+                  ref={phoneRef}
+                  label="PHONE"
+                  required
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  onKeyDown={(e) => onEnter(e, emailRef)}
+                  placeholder="+971 50 123 4567"
+                />
+                <Field
+                  ref={emailRef}
+                  label="EMAIL"
+                  required
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  onKeyDown={(e) => onEnter(e, 'submit')}
+                  placeholder="you@domain.com"
+                />
+              </div>
+
+              {/* Bottom row — opt-in toggle + send button */}
+              <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-6 items-end pt-2">
+                <label className="flex items-start gap-3 cursor-pointer group select-none">
                   <span
                     className={`mt-0.5 w-4 h-4 border flex items-center justify-center transition-colors shrink-0 ${
                       optIn
@@ -156,32 +232,31 @@ export default function LeadCapture() {
                   />
                   <span className="font-ui text-[11px] tracking-[0.2em] uppercase text-text/50 group-hover:text-text/80 transition-colors leading-relaxed">
                     Send me occasional SQUATWOLF drops &amp; brand updates.
-                    <br className="hidden sm:inline" />
-                    <span className="text-text/30 normal-case tracking-normal text-[10px]">
+                    <span className="text-text/30 normal-case tracking-normal text-[10px] block mt-1">
                       Unsubscribe any time.
                     </span>
                   </span>
                 </label>
 
-                {error && (
-                  <div className="mt-4 font-ui text-[11px] tracking-[0.2em] uppercase text-accent">
-                    ▸ {error}
-                  </div>
-                )}
+                <div className="flex flex-col gap-2 self-stretch sm:self-end">
+                  <Button
+                    variant="primary"
+                    onClick={handleSubmit}
+                    disabled={submitting}
+                  >
+                    {submitting ? 'SENDING…' : '▸ SEND IT'}
+                  </Button>
+                  <span className="font-ui text-[10px] tracking-[0.3em] uppercase text-text/30 text-center sm:text-right">
+                    ▸ NO SPAM. EVER.
+                  </span>
+                </div>
               </div>
 
-              <div className="flex flex-col gap-3 self-stretch lg:self-end">
-                <Button
-                  variant="primary"
-                  onClick={handleSubmit}
-                  disabled={!email.trim() || submitting}
-                >
-                  {submitting ? 'SENDING…' : '▸ EMAIL ME'}
-                </Button>
-                <span className="font-ui text-[10px] tracking-[0.3em] uppercase text-text/30 text-center lg:text-right">
-                  ▸ NO SPAM. EVER.
-                </span>
-              </div>
+              {error && (
+                <div className="font-ui text-[11px] tracking-[0.2em] uppercase text-accent">
+                  ▸ {error}
+                </div>
+              )}
             </motion.form>
           )}
         </AnimatePresence>
@@ -190,8 +265,44 @@ export default function LeadCapture() {
   );
 }
 
-/** Telemetry-style input: small uppercase Azeret Mono label, bottom-border-only field. */
-function Field({ label, required = false, ...inputProps }) {
+/**
+ * Gender chip — displays the landing-selected gender and lets the visitor
+ * swap it in one tap without a drop-down or dialog. Matches the telemetry
+ * aesthetic: uppercase Azeret Mono label, accent "tap to change" hint.
+ */
+function GenderChip({ gender, onSwap }) {
+  const normalised = normaliseGender(gender) || 'male';
+  const handleSwap = () => {
+    onSwap(normalised === 'male' ? 'female' : 'male');
+  };
+  return (
+    <button
+      type="button"
+      onClick={handleSwap}
+      className="group shrink-0 flex flex-col items-start gap-1.5 border border-text/15 hover:border-accent bg-text/[0.02] hover:bg-accent/[0.06] px-5 py-3.5 rounded-none hover:rounded-lg transition-all text-left cursor-pointer"
+      aria-label={`Gender: ${normalised}. Tap to change.`}
+    >
+      <span className="font-ui text-[10px] tracking-[0.3em] uppercase text-text/40 group-hover:text-accent transition-colors">
+        GENDER
+      </span>
+      <span className="flex items-center gap-2">
+        <span className="font-heading text-2xl leading-none text-text uppercase">
+          {normalised}
+        </span>
+        <span className="font-ui text-[9px] tracking-[0.3em] uppercase text-text/30 group-hover:text-text/60 transition-colors">
+          ▸ TAP
+        </span>
+      </span>
+    </button>
+  );
+}
+
+/**
+ * Telemetry-style input. Uses forwardRef-in-a-closure via function-component
+ * ref assignment (React 19 forwards the `ref` prop automatically to function
+ * components, so no explicit forwardRef wrapper needed).
+ */
+function Field({ ref, label, required = false, ...inputProps }) {
   return (
     <label className="block">
       <span className="font-ui text-[10px] tracking-[0.3em] uppercase text-text/40">
@@ -199,6 +310,7 @@ function Field({ label, required = false, ...inputProps }) {
         {required && <span className="text-accent ml-1">*</span>}
       </span>
       <input
+        ref={ref}
         required={required}
         {...inputProps}
         className="mt-2 w-full bg-transparent border-0 border-b border-text/20 focus:border-accent outline-none py-2 font-body text-text placeholder:text-text/20 text-base transition-colors"
@@ -207,29 +319,56 @@ function Field({ label, required = false, ...inputProps }) {
   );
 }
 
-function SuccessState() {
+/**
+ * Success panel — matches the "LOCKED." visual beat from the scan-complete
+ * overlay so the form submission feels like a continuation of the same
+ * flow, not a separate transactional step.
+ */
+function SuccessState({ name }) {
+  const firstName = (name || '').split(' ')[0];
   return (
     <motion.div
       key="success"
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0 }}
+      transition={{ duration: 0.3 }}
       className="py-6"
     >
       <div className="font-ui text-[10px] tracking-[0.5em] uppercase text-accent mb-3">
-        ▸ SAVED
+        ▸ SENT
       </div>
-      <h3 className="font-heading text-3xl sm:text-4xl text-text leading-none">
-        ROUTINE
+      <h3 className="font-heading text-4xl sm:text-5xl text-text leading-none">
+        ON ITS
         <br />
-        <span className="text-accent">IN YOUR INBOX.</span>
+        <span className="text-accent">WAY.</span>
       </h3>
-      <p className="font-body text-text/50 text-sm mt-3 max-w-md">
-        Check your email in a minute or two. The QR's still on screen if you'd
-        rather take it now.
+      <p className="font-body text-text/50 text-sm mt-4 max-w-md">
+        {firstName
+          ? `Check your inbox in a minute, ${firstName}. `
+          : 'Check your inbox in a minute. '}
+        The QR's still on screen if you'd rather take it now.
       </p>
     </motion.div>
   );
+}
+
+/** Strip everything but digits — used for phone length validation. */
+function digitsOnly(s) {
+  return (s || '').replace(/[^0-9]/g, '');
+}
+
+/**
+ * DEFAULT_USER_INFO seeds gender as 'Other' (capitalised). Landing forces
+ * it to 'male' / 'female' (lowercase) before the visitor reaches the
+ * routine page. Normalise on write so Supabase sees one of three values
+ * and never the capitalised default.
+ */
+function normaliseGender(g) {
+  if (!g) return null;
+  const lower = String(g).toLowerCase();
+  if (lower === 'male' || lower === 'female') return lower;
+  return 'other';
 }
 
 /**

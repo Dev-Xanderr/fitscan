@@ -144,8 +144,8 @@ export default function BoothLanding() {
               <dd className="text-text mt-1 tabular-nums">7 DAYS</dd>
             </div>
             <div>
-              <dt className="text-text/30">Forms</dt>
-              <dd className="text-accent mt-1">ZERO</dd>
+              <dt className="text-text/30">Privacy</dt>
+              <dd className="text-accent mt-1">OPT-IN</dd>
             </div>
           </motion.dl>
         </motion.div>
