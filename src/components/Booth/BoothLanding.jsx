@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion, useMotionValue, useSpring } from 'framer-motion';
+import { motion } from 'framer-motion';
 import useScanStore from '../../context/ScanContext';
 import { loadPoseDetector } from '../../services/poseService';
 import { GOALS, ROUTES } from '../../utils/constants';
@@ -28,29 +28,27 @@ export default function BoothLanding() {
   // Pending goal — set when the visitor taps a goal, cleared once they
   // either accept consent (and we navigate) or decline (and we drop it).
   const [pendingGoal, setPendingGoal] = useState(null);
-  // Goal-button hover state lifts the emblem opacity & glow so the brand
-  // stamp visibly reacts when the visitor engages with the panel. Cheaper
-  // and more reliable than passing whileHover via context.
+  // Goal-button hover state lifts the emblem opacity, scale & glow so the
+  // brand stamp visibly reacts when the visitor engages with the panel.
   const [goalHover, setGoalHover] = useState(false);
 
-  // Mouse parallax — the emblem drifts toward the cursor through a spring,
-  // so movement feels like inertia rather than a 1:1 follow. Capped at ±32px
-  // so it breathes, doesn't lurch. This is the "alive" signal that a static
-  // image was missing.
+  // Mouse parallax — emblem drifts toward the cursor with spring inertia.
+  // We use React state instead of useMotionValue/useSpring because the
+  // motion-value→style.x route silently failed to propagate on the deployed
+  // build (animate prop works fine, style.x with motion values doesn't).
+  // State updates per mousemove are cheap on a single-page kiosk and trigger
+  // framer-motion's spring transition cleanly.
   const mainRef = useRef(null);
-  const mouseX = useMotionValue(0);
-  const mouseY = useMotionValue(0);
-  const emblemX = useSpring(mouseX, { stiffness: 50, damping: 18, mass: 0.8 });
-  const emblemY = useSpring(mouseY, { stiffness: 50, damping: 18, mass: 0.8 });
+  const [parallax, setParallax] = useState({ x: 0, y: 0 });
 
   const handleMouseMove = (e) => {
     if (!mainRef.current) return;
     const rect = mainRef.current.getBoundingClientRect();
-    // Normalize to -0.5..0.5 around the centre, then scale to a px range.
+    // Normalize to -0.5..0.5 around the centre, scale to a generous px
+    // range so the drift is actually noticeable.
     const px = (e.clientX - rect.left) / rect.width - 0.5;
     const py = (e.clientY - rect.top) / rect.height - 0.5;
-    mouseX.set(px * 64);
-    mouseY.set(py * 64);
+    setParallax({ x: px * 110, y: py * 110 });
   };
 
   useEffect(() => {
@@ -131,20 +129,30 @@ export default function BoothLanding() {
           }}
         >
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: goalHover ? 0.55 : 0.32 }}
-            transition={{ opacity: { duration: 0.5, ease: 'easeOut' } }}
-            style={{ x: emblemX, y: emblemY }}
+            initial={{ opacity: 0, x: 0, y: 0 }}
+            animate={{
+              opacity: goalHover ? 0.85 : 0.5,
+              x: parallax.x,
+              y: parallax.y,
+              scale: goalHover ? 1.06 : 1,
+            }}
+            transition={{
+              opacity: { duration: 0.45, ease: 'easeOut' },
+              scale: { duration: 0.5, ease: [0.16, 1, 0.3, 1] },
+              // Spring drift on parallax — soft, lazy follow.
+              x: { type: 'spring', stiffness: 60, damping: 18, mass: 0.7 },
+              y: { type: 'spring', stiffness: 60, damping: 18, mass: 0.7 },
+            }}
             className="w-full h-full"
           >
             <motion.div
               initial={{ rotate: -14 }}
-              animate={{ rotate: -8, scale: [1, 1.04, 1] }}
+              animate={{ rotate: -8, scale: [1, 1.06, 1] }}
               transition={{
                 rotate: { duration: 1.4, ease: [0.16, 1, 0.3, 1] },
-                // Slow breath — starts after the entrance settles so the two
-                // animations don't fight for the same frame budget.
-                scale: { duration: 7, repeat: Infinity, ease: 'easeInOut', delay: 1.6 },
+                // Slow breath cycle — starts after the entrance settles so the
+                // two animations don't fight for the same frame budget.
+                scale: { duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 1.6 },
               }}
               className="w-full h-full"
               style={{
@@ -158,11 +166,11 @@ export default function BoothLanding() {
                 WebkitMaskPosition: 'center',
                 backgroundColor: '#B93A32',
                 filter: goalHover
-                  ? 'drop-shadow(0 0 140px rgba(185,58,50,0.7))'
-                  : 'drop-shadow(0 0 80px rgba(185,58,50,0.4))',
+                  ? 'drop-shadow(0 0 180px rgba(185,58,50,0.85))'
+                  : 'drop-shadow(0 0 100px rgba(185,58,50,0.55))',
                 // CSS-side transition for the filter swap so it eases in/out
                 // instead of snapping when goalHover flips.
-                transition: 'filter 0.45s ease-out',
+                transition: 'filter 0.5s ease-out',
               }}
             />
           </motion.div>
