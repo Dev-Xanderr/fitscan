@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import useScanStore from '../../context/ScanContext';
 import { loadPoseDetector, detectPose, isFullBodyVisible, warmUpDetector } from '../../services/poseService';
 import { calculateBodyMetrics, classifyBodyType, classifyFrameSize, getProportionalNotes, calculateBMI, normalizeUserMeasurements } from '../../utils/bodyMetrics';
-import { STABILITY_THRESHOLD, STABILITY_FRAMES, STABILITY_DURATION, STABILITY_BAD_FRAME_TOLERANCE, DETECTION_TIMEOUT, BODY_TYPES, SCAN_STATUS, ROUTES } from '../../utils/constants';
+import { STABILITY_THRESHOLD, STABILITY_FRAMES, STABILITY_DURATION, STABILITY_BAD_FRAME_TOLERANCE, FULL_BODY_KEYPOINT_CONF, FULL_BODY_MISSING_TOLERANCE, DETECTION_TIMEOUT, BODY_TYPES, SCAN_STATUS, ROUTES } from '../../utils/constants';
 import { generateLocalRoutine } from '../../services/localRoutineGenerator';
 import SkeletonOverlay from './SkeletonOverlay';
 import SilhouetteGuide from './SilhouetteGuide';
@@ -31,7 +31,7 @@ const STATUS_HINTS = {
   [SCAN_STATUS.LOADING]: 'Loading the model.',
   [SCAN_STATUS.SEARCHING]: 'Move into the silhouette.',
   [SCAN_STATUS.DETECTED]: 'Body detected — hold steady.',
-  [SCAN_STATUS.HOLDING]: 'Don’t move. Three seconds.',
+  [SCAN_STATUS.HOLDING]: 'Don’t move. Hold the lock.',
   [SCAN_STATUS.COMPLETE]: 'Reading your build…',
 };
 
@@ -177,7 +177,7 @@ export default function CameraView() {
         const kps = pose.keypoints;
         setCurrentKeypoints(kps);
 
-        if (isFullBodyVisible(kps)) {
+        if (isFullBodyVisible(kps, FULL_BODY_KEYPOINT_CONF, FULL_BODY_MISSING_TOLERANCE)) {
           const currentStatus = useScanStore.getState().scanStatus;
           if (
             currentStatus !== SCAN_STATUS.DETECTED &&
@@ -438,12 +438,26 @@ export default function CameraView() {
   const trackedCount = currentKeypoints
     ? currentKeypoints.filter((kp) => kp.score >= 0.3).length
     : 0;
-  const holdSeconds = (holdProgress * (STABILITY_DURATION / 1000)).toFixed(1);
+  // Total hold duration in seconds — derived from STABILITY_DURATION so the
+  // tachometer countdown and HUD copy automatically follow whatever sensitivity
+  // the booth operator dials in via constants.js. Hardcoding "3" here meant
+  // the giant tachometer flashed "3" forever once we cut STABILITY_DURATION
+  // to 2000ms, because holdProgress only reaches 1 at 2s but the formula was
+  // counting down from 3.
+  const totalHoldSec = STABILITY_DURATION / 1000;
+  const holdSeconds = (holdProgress * totalHoldSec).toFixed(1);
   const holdPct = Math.round(holdProgress * 100);
-  // Whole-second countdown (3 → 2 → 1) for the tachometer-style HUD readout.
+  // Whole-second countdown (e.g. 2 → 1) for the tachometer-style HUD readout.
   // Clamp to a min of 1 so we never flash a "0" before the COMPLETE overlay
   // takes the screen.
-  const holdCountdown = Math.max(1, Math.ceil(3 - holdProgress * 3));
+  const holdCountdown = Math.max(
+    1,
+    Math.ceil(totalHoldSec - holdProgress * totalHoldSec),
+  );
+  // Pre-formatted total — used by both the bottom HOLD strip ("0.6S / 2.0S")
+  // and the guidance copy ("Hold still 2 seconds") so they can't drift.
+  const totalHoldDisplay = totalHoldSec.toFixed(1);
+  const totalHoldWords = `${totalHoldSec.toString().replace(/\.0$/, '')} second${totalHoldSec === 1 ? '' : 's'}`;
   const isShowingGuide =
     scanStatus === SCAN_STATUS.SEARCHING ||
     scanStatus === SCAN_STATUS.IDLE ||
@@ -628,7 +642,7 @@ export default function CameraView() {
                 </li>
                 <li className="flex gap-3">
                   <span className="text-accent font-ui text-[11px] mt-0.5">03</span>
-                  Hold still 3 seconds
+                  Hold still {totalHoldWords}
                 </li>
               </ol>
             </div>
@@ -853,7 +867,7 @@ export default function CameraView() {
                       />
                     </div>
                     <span className="tabular-nums text-text/80">
-                      {holdSeconds}S / 3.0S
+                      {holdSeconds}S / {totalHoldDisplay}S
                     </span>
                   </motion.div>
                 )}
@@ -898,7 +912,7 @@ export default function CameraView() {
               style={{ width: dimensions.width || undefined }}
             >
               <p className="font-body text-text/40 text-sm max-w-md">
-                Stand about 6ft from the camera. Full body visible. Hold still for 3 seconds and we'll lock in your build.
+                Stand about 6ft from the camera. Full body visible. Hold still for {totalHoldWords} and we'll lock in your build.
               </p>
               {/* Mobile-only fallback (desktop has it in the rail) */}
               <button

@@ -57,7 +57,22 @@ const MOVENET_KEYPOINT_NAMES = [
   'left_knee', 'right_knee', 'left_ankle', 'right_ankle',
 ];
 
-export function isFullBodyVisible(keypoints, minConfidence = 0.3) {
+/**
+ * Returns true when "enough" of the body's required keypoints are visible.
+ *
+ * Strict-every-keypoint semantics caused too many failed locks: a single
+ * occluded ankle or low-confidence knee under bad booth lighting would flip
+ * the result to false for one frame, which the scan loop interpreted as the
+ * visitor stepping out of frame. Now we tolerate up to `missingAllowed` of
+ * the 8 required parts being below the confidence floor — a single dipped
+ * limb won't kill a lock, but a body that's genuinely not in frame still
+ * fails fast.
+ *
+ * @param {Array<{name:string,score:number}>} keypoints
+ * @param {number} [minConfidence=0.2] floor below which a keypoint counts as missing
+ * @param {number} [missingAllowed=1] how many of the 8 may be missing and still pass
+ */
+export function isFullBodyVisible(keypoints, minConfidence = 0.2, missingAllowed = 1) {
   const requiredParts = [
     'left_shoulder', 'right_shoulder',
     'left_hip', 'right_hip',
@@ -65,8 +80,13 @@ export function isFullBodyVisible(keypoints, minConfidence = 0.3) {
     'left_ankle', 'right_ankle',
   ];
 
-  return requiredParts.every((name) => {
+  let missing = 0;
+  for (const name of requiredParts) {
     const kp = keypoints.find((k) => k.name === name);
-    return kp && kp.score >= minConfidence;
-  });
+    if (!kp || kp.score < minConfidence) {
+      missing++;
+      if (missing > missingAllowed) return false;
+    }
+  }
+  return true;
 }
