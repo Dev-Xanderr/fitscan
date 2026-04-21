@@ -34,6 +34,7 @@ export default function BoothRoutine({ phoneMode = false }) {
     bodyType,
     frameSize,
     boothGoal,
+    leadCaptured,
     reset,
   } = useScanStore();
 
@@ -310,7 +311,13 @@ export default function BoothRoutine({ phoneMode = false }) {
             </div>
           </motion.div>
 
-          {/* 03 — TAKE IT WITH YOU (QR card, booth only) */}
+          {/* 03 — TAKE IT WITH YOU (QR card, booth only).
+              The QR is gated behind lead capture — the routine itself is
+              fully visible (see section 02), but the take-home artifact
+              requires the visitor to drop their details. Frames the form
+              as a delivery mechanism rather than a marketing ask, and
+              materially bumps capture over the "parallel path" pattern.
+              Phone viewers (QR already scanned) never see this card. */}
           {!phoneMode && (
             <motion.aside
               initial={{ opacity: 0, x: 20 }}
@@ -322,38 +329,73 @@ export default function BoothRoutine({ phoneMode = false }) {
               <div className="relative bg-text text-bg p-7">
                 <BracketFrame size="md" color="accent" />
                 <div className="font-ui text-[10px] tracking-[0.4em] uppercase text-bg/60">
-                  SCAN · TAKE HOME
+                  {leadCaptured ? 'SCAN · TAKE HOME' : 'LOCKED · UNLOCK BELOW'}
                 </div>
                 <div className="font-heading text-3xl mt-2 mb-5 leading-none">
-                  YOUR PHONE
-                  <br />
-                  <span className="text-accent">YOUR PLAN.</span>
+                  {leadCaptured ? (
+                    <>
+                      YOUR PHONE
+                      <br />
+                      <span className="text-accent">YOUR PLAN.</span>
+                    </>
+                  ) : (
+                    <>
+                      LOCK IT
+                      <br />
+                      <span className="text-accent">TO KEEP IT.</span>
+                    </>
+                  )}
                 </div>
 
-                {qrUrl && qrUrl.length <= 2953 ? (
-                  <div className="bg-text p-2 inline-block border border-bg/10">
-                    <QRCodeSVG
-                      value={qrUrl}
-                      size={228}
-                      bgColor="#FAFAFA"
-                      fgColor="#121212"
-                      level="L"
-                    />
-                  </div>
-                ) : (
-                  <div className="bg-bg p-3 w-[228px] h-[228px] flex items-center justify-center text-text/50 text-xs text-center">
-                    Routine too large for QR
-                  </div>
-                )}
+                <AnimatePresence mode="wait">
+                  {leadCaptured ? (
+                    <motion.div
+                      key="qr"
+                      initial={{ opacity: 0, scale: 0.92 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.35, ease: 'easeOut' }}
+                    >
+                      {qrUrl && qrUrl.length <= 2953 ? (
+                        <div className="bg-text p-2 inline-block border border-bg/10">
+                          <QRCodeSVG
+                            value={qrUrl}
+                            size={228}
+                            bgColor="#FAFAFA"
+                            fgColor="#121212"
+                            level="L"
+                          />
+                        </div>
+                      ) : (
+                        <div className="bg-bg p-3 w-[228px] h-[228px] flex items-center justify-center text-text/50 text-xs text-center">
+                          Routine too large for QR
+                        </div>
+                      )}
+                    </motion.div>
+                  ) : (
+                    <motion.div
+                      key="locked"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <LockedQRPlaceholder />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
 
                 <p className="font-body text-bg/60 text-xs mt-5 max-w-[228px] leading-relaxed">
-                  Open your camera, point at the code, and your full routine
-                  comes home with you.
+                  {leadCaptured
+                    ? 'Open your camera, point at the code, and your full routine comes home with you.'
+                    : 'Enter your details below to unlock the QR. We\u2019ll email a copy too so it follows you home either way.'}
                 </p>
 
                 <div className="mt-5 pt-4 border-t border-bg/10 flex items-center justify-between font-ui text-[10px] tracking-[0.3em] uppercase">
                   <span className="text-bg/50">squatwolf.com</span>
-                  <span className="text-accent">▸ READY</span>
+                  <span className={leadCaptured ? 'text-accent' : 'text-bg/40'}>
+                    {leadCaptured ? '\u25b8 READY' : '\u25b8 LOCKED'}
+                  </span>
                 </div>
               </div>
             </motion.aside>
@@ -568,6 +610,54 @@ export default function BoothRoutine({ phoneMode = false }) {
           </motion.div>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+/**
+ * Placeholder shown in place of the QR while the visitor hasn't dropped
+ * their details yet. Same 228px footprint as the real QR so the card
+ * doesn't reflow when the unlock animation runs.
+ *
+ * Visual language: diagonal racing-stripe chevron motif (matches the
+ * scanner HUD) + a chunky lock glyph + a "UNLOCK BELOW" chevron pointing
+ * the visitor's eye toward the form.
+ */
+function LockedQRPlaceholder() {
+  return (
+    <div className="relative w-[228px] h-[228px] bg-bg text-text overflow-hidden flex flex-col items-center justify-center gap-3 border border-bg/10">
+      {/* Chevron racing stripes across the whole placeholder */}
+      <div
+        className="absolute inset-0 diagonal-stripes opacity-30 pointer-events-none"
+        aria-hidden="true"
+      />
+      {/* Corner tick marks so it matches the telemetry aesthetic */}
+      <div className="absolute top-2 left-2 w-3 h-3 border-l-2 border-t-2 border-accent pointer-events-none" aria-hidden="true" />
+      <div className="absolute top-2 right-2 w-3 h-3 border-r-2 border-t-2 border-accent pointer-events-none" aria-hidden="true" />
+      <div className="absolute bottom-2 left-2 w-3 h-3 border-l-2 border-b-2 border-accent pointer-events-none" aria-hidden="true" />
+      <div className="absolute bottom-2 right-2 w-3 h-3 border-r-2 border-b-2 border-accent pointer-events-none" aria-hidden="true" />
+
+      {/* Lock glyph — hand-drawn to avoid another dependency */}
+      <svg
+        viewBox="0 0 24 24"
+        className="w-14 h-14 text-accent relative z-10"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        aria-hidden="true"
+      >
+        <rect x="4" y="10.5" width="16" height="10" rx="1" />
+        <path d="M8 10.5V7.2a4 4 0 0 1 8 0v3.3" />
+        <circle cx="12" cy="15.2" r="1.3" fill="currentColor" />
+        <path d="M12 16.4v2.1" />
+      </svg>
+
+      <div className="relative z-10 font-ui text-[11px] tracking-[0.45em] uppercase text-text">
+        LOCKED
+      </div>
+      <div className="relative z-10 font-ui text-[9px] tracking-[0.4em] uppercase text-accent attract-pulse">
+        UNLOCK BELOW ▾
+      </div>
     </div>
   );
 }

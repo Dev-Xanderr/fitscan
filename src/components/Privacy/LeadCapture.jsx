@@ -134,7 +134,7 @@ export default function LeadCapture() {
       transition={{ delay: 0.35 }}
       className="mt-12"
     >
-      <SectionLabel n="04" title="SAVE TO INBOX" />
+      <SectionLabel n="04" title="UNLOCK TAKE-HOME" />
 
       <div className="mt-5 relative border border-text/10 bg-text/[0.02] p-6 sm:p-8">
         <BracketFrame size="md" color="muted" />
@@ -156,14 +156,14 @@ export default function LeadCapture() {
               <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 lg:gap-10 items-start">
                 <div>
                   <h3 className="font-heading text-3xl sm:text-4xl text-text leading-none">
-                    ROUTINE TO YOUR
+                    TAKE IT
                     <br />
-                    <span className="text-accent">INBOX.</span>
+                    <span className="text-accent">HOME.</span>
                   </h3>
                   <p className="font-body text-text/50 text-sm mt-3 max-w-md">
-                    Drop your details and we'll send the full plan. The QR
-                    works either way — this just makes sure you don't lose
-                    the routine when you leave the booth.
+                    Your plan's locked in. Drop your details to unlock the
+                    take-home QR — we'll email a copy too so it's safe in
+                    your inbox.
                   </p>
                 </div>
 
@@ -244,7 +244,7 @@ export default function LeadCapture() {
                     onClick={handleSubmit}
                     disabled={submitting}
                   >
-                    {submitting ? 'SENDING…' : '▸ SEND IT'}
+                    {submitting ? 'UNLOCKING…' : '▸ UNLOCK QR'}
                   </Button>
                   <span className="font-ui text-[10px] tracking-[0.3em] uppercase text-text/30 text-center sm:text-right">
                     ▸ NO SPAM. EVER.
@@ -336,18 +336,18 @@ function SuccessState({ name }) {
       className="py-6"
     >
       <div className="font-ui text-[10px] tracking-[0.5em] uppercase text-accent mb-3">
-        ▸ SENT
+        ▸ UNLOCKED
       </div>
       <h3 className="font-heading text-4xl sm:text-5xl text-text leading-none">
-        ON ITS
+        QR IS
         <br />
-        <span className="text-accent">WAY.</span>
+        <span className="text-accent">YOURS.</span>
       </h3>
       <p className="font-body text-text/50 text-sm mt-4 max-w-md">
         {firstName
-          ? `Check your inbox in a minute, ${firstName}. `
-          : 'Check your inbox in a minute. '}
-        The QR's still on screen if you'd rather take it now.
+          ? `Scan the code above, ${firstName} — or wait a minute and check your inbox. `
+          : 'Scan the code above — or wait a minute and check your inbox. '}
+        Either way, the plan follows you home.
       </p>
     </motion.div>
   );
