@@ -397,11 +397,28 @@ export default function CameraView() {
     : 0;
   const holdSeconds = (holdProgress * (STABILITY_DURATION / 1000)).toFixed(1);
   const holdPct = Math.round(holdProgress * 100);
+  // Whole-second countdown (3 → 2 → 1) for the tachometer-style HUD readout.
+  // Clamp to a min of 1 so we never flash a "0" before the COMPLETE overlay
+  // takes the screen.
+  const holdCountdown = Math.max(1, Math.ceil(3 - holdProgress * 3));
   const isShowingGuide =
     scanStatus === SCAN_STATUS.SEARCHING ||
     scanStatus === SCAN_STATUS.IDLE ||
     scanStatus === SCAN_STATUS.LOADING ||
     scanStatus === SCAN_STATUS.CAMERA;
+
+  // Pseudo-telemetry vector readout — pulled off the nose keypoint (idx 0)
+  // and normalised to the video frame so the numbers read as 0.000-1.000
+  // coordinates rather than raw pixels. Falls back to "—" before lock-on.
+  const noseKp = currentKeypoints?.[0];
+  const vectorX = noseKp ? (noseKp.x / videoDims.width).toFixed(3) : '—.———';
+  const vectorY = noseKp ? (noseKp.y / videoDims.height).toFixed(3) : '—.———';
+  const avgConf = currentKeypoints && currentKeypoints.length
+    ? (
+        currentKeypoints.reduce((s, kp) => s + (kp.score || 0), 0) /
+        currentKeypoints.length
+      ).toFixed(3)
+    : '—.———';
 
   // ── CONSENT GUARD ──────────────────────────────────────────────────────────
   // If the visitor lands on /scan without a granted consent flag, send them
@@ -541,9 +558,22 @@ export default function CameraView() {
               </dl>
             </div>
 
-            {/* 03 — GUIDANCE */}
+            {/* 03 — VECTOR (pose-derived live coords; reads as racing position data) */}
             <div className="space-y-4">
-              <SectionLabel n="03" title="GUIDANCE" />
+              <SectionLabel n="03" title="VECTOR" />
+              <dl className="grid grid-cols-[1fr_auto] gap-y-2 gap-x-6 font-ui text-[11px]">
+                <dt className="text-text/40 uppercase tracking-[0.2em]">Pos·X</dt>
+                <dd className="tabular-nums text-text text-right">{vectorX}</dd>
+                <dt className="text-text/40 uppercase tracking-[0.2em]">Pos·Y</dt>
+                <dd className="tabular-nums text-text text-right">{vectorY}</dd>
+                <dt className="text-text/40 uppercase tracking-[0.2em]">Conf</dt>
+                <dd className="tabular-nums text-text text-right">{avgConf}</dd>
+              </dl>
+            </div>
+
+            {/* 04 — GUIDANCE */}
+            <div className="space-y-4">
+              <SectionLabel n="04" title="GUIDANCE" />
               <ol className="space-y-2 font-body text-sm text-text/60">
                 <li className="flex gap-3">
                   <span className="text-accent font-ui text-[11px] mt-0.5">01</span>
@@ -605,17 +635,114 @@ export default function CameraView() {
               className="relative bg-black border border-text/20 self-center"
               style={{ width: dimensions.width, height: dimensions.height }}
             >
-              {/* Outer corner brackets */}
-              <BracketFrame />
+              {/* Outer corner brackets — chunkier "lg" size for the racing frame look */}
+              <BracketFrame size="lg" />
 
               {/* Top strip — feed metadata */}
               <div className="absolute top-0 left-0 right-0 z-20 px-3 py-2 flex items-center justify-between font-ui text-[9px] uppercase tracking-[0.4em] text-text/60 bg-gradient-to-b from-black/70 to-transparent pointer-events-none">
                 <span>FEED · {videoDims.width}×{videoDims.height}</span>
-                <span className="flex items-center gap-2 text-accent">
-                  <span className="w-1.5 h-1.5 bg-accent inline-block pulse-glow" />
-                  LIVE
+                <span className="flex items-center gap-4">
+                  <span className="text-text/50 hidden sm:inline">CH·01</span>
+                  <span className="flex items-center gap-2 text-accent">
+                    <span className="w-1.5 h-1.5 bg-accent inline-block pulse-glow" />
+                    LIVE
+                  </span>
                 </span>
               </div>
+
+              {/* Pseudo-telemetry data ticker — sits just below the FEED strip,
+                  scrolls right→left to give the viewport an "instrument
+                  cluster always-on" feel. Frame counter feeds the live values. */}
+              <div className="absolute top-7 left-0 right-0 z-[15] h-5 bg-black/55 border-y border-text/10 overflow-hidden pointer-events-none">
+                <div className="data-feed flex w-max whitespace-nowrap font-ui text-[9px] tracking-[0.3em] uppercase text-text/55 leading-5 will-change-transform">
+                  <DataFeedRow frame={frameDisplay} tracked={trackedCount} stab={holdPct} conf={avgConf} />
+                  <DataFeedRow frame={frameDisplay} tracked={trackedCount} stab={holdPct} conf={avgConf} />
+                </div>
+              </div>
+
+              {/* Rangefinder hash-mark rulers — racing measurement-tape feel
+                  along the left + right edges of the viewport. */}
+              <div className="absolute top-8 bottom-0 left-0 w-2 hash-marks-y pointer-events-none z-10" aria-hidden="true" />
+              <div className="absolute top-8 bottom-0 right-0 w-2 hash-marks-y pointer-events-none z-10" aria-hidden="true" />
+              <div className="absolute top-8 bottom-0 left-0 w-2 hash-marks-y-major pointer-events-none z-10 mix-blend-screen" aria-hidden="true" />
+              <div className="absolute top-8 bottom-0 right-0 w-2 hash-marks-y-major pointer-events-none z-10 mix-blend-screen" aria-hidden="true" />
+
+              {/* Diagonal racing-stripe markers — top-right + bottom-left,
+                  pit-lane chevron motif that subtly animates. */}
+              <div className="absolute top-12 right-0 w-24 h-1.5 diagonal-stripes opacity-70 z-20 pointer-events-none" aria-hidden="true" />
+              <div className="absolute bottom-0 left-0 w-24 h-1.5 diagonal-stripes opacity-70 z-20 pointer-events-none" aria-hidden="true" />
+
+              {/* Vertical scanline sweep — only while actively searching/locking.
+                  Hidden during HOLDING so it doesn't compete with the tachometer. */}
+              {!loading &&
+                scanStatus !== SCAN_STATUS.HOLDING &&
+                scanStatus !== SCAN_STATUS.COMPLETE && (
+                  <div className="absolute inset-0 z-[15] overflow-hidden pointer-events-none">
+                    <div className="absolute inset-x-0 h-px bg-accent shadow-[0_0_24px_rgba(185,58,50,0.85)] scan-sweep-v" />
+                  </div>
+                )}
+
+              {/* Center crosshair / target reticle — pops the moment a body is
+                  detected; persists through HOLD as a "lock acquired" marker. */}
+              <AnimatePresence>
+                {(scanStatus === SCAN_STATUS.DETECTED ||
+                  scanStatus === SCAN_STATUS.HOLDING) && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 1.4 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    transition={{ duration: 0.25, ease: 'easeOut' }}
+                    className="absolute inset-0 z-20 pointer-events-none flex items-center justify-center"
+                  >
+                    <div className="relative w-28 h-28 radar-pulse">
+                      <div className="absolute top-1/2 left-0 right-0 h-px bg-accent/70" />
+                      <div className="absolute left-1/2 top-0 bottom-0 w-px bg-accent/70" />
+                      <div className="absolute top-0 left-0 w-3.5 h-3.5 border-l-2 border-t-2 border-accent" />
+                      <div className="absolute top-0 right-0 w-3.5 h-3.5 border-r-2 border-t-2 border-accent" />
+                      <div className="absolute bottom-0 left-0 w-3.5 h-3.5 border-l-2 border-b-2 border-accent" />
+                      <div className="absolute bottom-0 right-0 w-3.5 h-3.5 border-r-2 border-b-2 border-accent" />
+                      {/* Tiny coord chip top-right of the reticle */}
+                      <span className="absolute -top-5 right-0 font-ui text-[9px] tracking-[0.3em] uppercase text-accent tabular-nums">
+                        {vectorX} · {vectorY}
+                      </span>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Giant tachometer-style HOLD countdown.
+                  Sits behind the bottom HOLD strip and is the focal element of
+                  the screen during the 3-second lock-in. */}
+              <AnimatePresence>
+                {scanStatus === SCAN_STATUS.HOLDING && (
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="absolute inset-0 z-[25] pointer-events-none flex flex-col items-center justify-center"
+                  >
+                    <div className="font-ui text-[10px] tracking-[0.5em] uppercase text-accent mb-2">
+                      ▸ HOLD
+                    </div>
+                    <AnimatePresence mode="wait">
+                      <motion.div
+                        key={holdCountdown}
+                        initial={{ scale: 1.5, opacity: 0 }}
+                        animate={{ scale: 1, opacity: 1 }}
+                        exit={{ scale: 0.6, opacity: 0 }}
+                        transition={{ duration: 0.18, ease: 'easeOut' }}
+                        className="font-heading font-bold text-[10rem] sm:text-[12rem] leading-none tabular-nums text-text tachometer-glow"
+                      >
+                        {holdCountdown}
+                      </motion.div>
+                    </AnimatePresence>
+                    <div className="font-ui text-[10px] tracking-[0.4em] uppercase text-text/60 mt-2">
+                      DON'T MOVE
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
               {/* Loading scrim */}
               {loading && (
@@ -745,5 +872,50 @@ export default function CameraView() {
         <BottomBar stage={2} tagline="▸ READ. LOCK. BUILD." />
       </div>
     </PageTransition>
+  );
+}
+
+/**
+ * Pseudo-telemetry strip rendered inside the data-feed ticker.
+ *
+ * The actual scroll is a CSS animation on the parent (`.data-feed`); this
+ * component just emits the string content. Two copies of the row are placed
+ * side-by-side so the parent can translateX(-50%) for a seamless loop.
+ *
+ * Values are a mix of real signal (frame counter, tracked-keypoint count,
+ * stability %, average confidence) and decorative deterministic noise that
+ * varies with the frame counter — enough to read as "live" without burning
+ * cycles on RNG every render.
+ */
+function DataFeedRow({ frame, tracked, stab, conf }) {
+  const f = frame || 0;
+  const drift = ((f % 40) / 1000).toFixed(3);
+  const vec = (0.12 + (f % 50) / 500).toFixed(3);
+  const lat = (8 + (f % 4)).toString().padStart(2, '0');
+  return (
+    <span className="px-6 inline-flex items-center gap-6">
+      <span>POSE.CONF <span className="text-text tabular-nums">{conf}</span></span>
+      <span className="text-accent">·</span>
+      <span>VEC.MAG <span className="text-text tabular-nums">{vec}</span></span>
+      <span className="text-accent">·</span>
+      <span>DRIFT <span className="text-text tabular-nums">{drift}</span></span>
+      <span className="text-accent">·</span>
+      <span>KP <span className="text-text tabular-nums">{String(tracked).padStart(2, '0')}/17</span></span>
+      <span className="text-accent">·</span>
+      <span>STAB <span className="text-text tabular-nums">{String(stab).padStart(3, '0')}%</span></span>
+      <span className="text-accent">·</span>
+      <span>FRAME <span className="text-text tabular-nums">{String(f).padStart(5, '0')}</span></span>
+      <span className="text-accent">·</span>
+      <span>LAT <span className="text-text tabular-nums">{lat}MS</span></span>
+      <span className="text-accent">·</span>
+      <span>RIG.01</span>
+      <span className="text-accent">·</span>
+      <span>ENGINE.MOVENET</span>
+      <span className="text-accent">·</span>
+      <span>MODE.CAPTURE</span>
+      <span className="text-accent">·</span>
+      <span>BORN.IN.DUBAI</span>
+      <span className="text-accent">·</span>
+    </span>
   );
 }

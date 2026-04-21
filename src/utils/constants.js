@@ -37,9 +37,15 @@ export const POSE_CONNECTIONS = [
   [12, 14], [14, 16], // right leg
 ];
 
-export const STABILITY_THRESHOLD = 5;
+// Average per-keypoint pixel-delta below which we count a frame as "still".
+// Higher = more forgiving of breathing / micro-sway. Bumped from 5 → 8 after
+// kiosk feedback that scans were aborting on natural standing motion.
+export const STABILITY_THRESHOLD = 8;
 export const STABILITY_DURATION = 3000;
-export const STABILITY_FRAMES = 10;
+// Bumped 10 → 14: forces the rolling avg over a longer window so a single
+// twitchy frame doesn't pop the visitor out of HOLDING. Pairs with the
+// looser pixel threshold above.
+export const STABILITY_FRAMES = 14;
 export const DETECTION_TIMEOUT = 60000;
 
 // ── Stringly-typed enum centralization ───────────────────────────────────────

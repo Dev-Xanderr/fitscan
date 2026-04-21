@@ -114,3 +114,81 @@ body::before {
 
 /* Booth-only: hide cursor for kiosk feel */
 .booth-kiosk, .booth-kiosk * { cursor: none !important; }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   SCANNER HUD — Lando-Norris-style racing telemetry overlays
+   Used inside the camera viewport to give the live feed a kinetic,
+   instrument-cluster feel without competing with the pose skeleton.
+   ───────────────────────────────────────────────────────────────────────── */
+
+/* Vertical scanline sweep — a 1px accent hairline that sweeps top→bottom
+   across the camera viewport, like an active radar return. */
+@keyframes scan-sweep-v {
+  0%   { transform: translateY(-12%); opacity: 0; }
+  8%   { opacity: 1; }
+  92%  { opacity: 1; }
+  100% { transform: translateY(112%); opacity: 0; }
+}
+.scan-sweep-v { animation: scan-sweep-v 3.4s linear infinite; }
+
+/* Right→left scrolling pseudo-telemetry ticker.
+   Pair with a duplicated child row so translateX(-50%) loops seamlessly. */
+@keyframes data-feed {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.data-feed { animation: data-feed 28s linear infinite; }
+
+/* Center crosshair breathing — broadcasts that the rig is "alive" and
+   awaiting lock-on. */
+@keyframes radar-pulse {
+  0%, 100% { transform: scale(1);    opacity: 0.55; }
+  50%      { transform: scale(1.12); opacity: 0.95; }
+}
+.radar-pulse { animation: radar-pulse 1.8s ease-in-out infinite; }
+
+/* Animated chevron stripe — racing hazard / pit-lane motif on the
+   viewport's diagonal corner blocks. */
+@keyframes diagonal-shift {
+  0%   { background-position: 0 0; }
+  100% { background-position: 24px 0; }
+}
+.diagonal-stripes {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    rgba(185, 58, 50, 0.7) 0,
+    rgba(185, 58, 50, 0.7) 2px,
+    transparent 2px,
+    transparent 8px
+  );
+  animation: diagonal-shift 0.9s linear infinite;
+}
+
+/* Rangefinder hash-mark rulers along the viewport edges.
+   Two layers stack: minor (every 12px, white-translucent) +
+   major (every 60px, accent-red) for a measurement-tape feel. */
+.hash-marks-y {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(250, 250, 250, 0.32) 0,
+    rgba(250, 250, 250, 0.32) 1px,
+    transparent 1px,
+    transparent 12px
+  );
+}
+.hash-marks-y-major {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    rgba(185, 58, 50, 0.85) 0,
+    rgba(185, 58, 50, 0.85) 1px,
+    transparent 1px,
+    transparent 60px
+  );
+}
+
+/* Tachometer-style number drop shadow — for the giant HOLD countdown. */
+.tachometer-glow {
+  text-shadow:
+    0 0 24px rgba(185, 58, 50, 0.55),
+    0 0 60px rgba(185, 58, 50, 0.25);
+}
