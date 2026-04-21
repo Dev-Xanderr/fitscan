@@ -41,6 +41,14 @@ const useScanStore = create((set) => ({
   routineLoading: false,
   routineError: null,
 
+  // Privacy + lead capture state.
+  // consentAccepted gates the scan flow — visitor must opt in before the
+  // camera ever starts. Cleared on reset() so each booth visitor re-consents.
+  // leadCaptured prevents the routine page asking twice if they already opted
+  // in for inbox delivery.
+  consentAccepted: false,
+  leadCaptured: false,
+
   // Actions
   setUserInfo: (info) => set((s) => ({ userInfo: { ...s.userInfo, ...info } })),
   setGender: (gender) => set((s) => ({ userInfo: { ...s.userInfo, gender } })),
@@ -66,6 +74,8 @@ const useScanStore = create((set) => ({
   setRoutine: (routine) => set({ routine, routineLoading: false, routineError: null }),
   setRoutineLoading: (routineLoading) => set({ routineLoading }),
   setRoutineError: (routineError) => set({ routineError, routineLoading: false }),
+  setConsentAccepted: (consentAccepted) => set({ consentAccepted }),
+  setLeadCaptured: (leadCaptured) => set({ leadCaptured }),
   reset: () =>
     set({
       userInfo: { ...DEFAULT_USER_INFO },
@@ -81,6 +91,8 @@ const useScanStore = create((set) => ({
       routine: null,
       routineLoading: false,
       routineError: null,
+      consentAccepted: false,
+      leadCaptured: false,
     }),
 }));
 

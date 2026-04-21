@@ -9,6 +9,7 @@ import Button from '../UI/Button';
 import { getProductRecommendations } from '../../utils/productRecommendations';
 import { GOALS, ROUTES } from '../../utils/constants';
 import { SectionLabel, BracketFrame, TopBar, BottomBar, padFrame } from '../UI/Telemetry';
+import LeadCapture from '../Privacy/LeadCapture';
 
 const AUTO_RESET_SECONDS = 60;
 
@@ -359,7 +360,10 @@ export default function BoothRoutine({ phoneMode = false }) {
           )}
         </div>
 
-        {/* 04 — GEAR */}
+        {/* 04 — SAVE TO INBOX (booth only — phone visitors already chose) */}
+        {!phoneMode && <LeadCapture />}
+
+        {/* 05 — GEAR */}
         {productRecs.length > 0 && (
           <motion.section
             className="mt-14"
@@ -367,7 +371,7 @@ export default function BoothRoutine({ phoneMode = false }) {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
           >
-            <SectionLabel n="04" title="GEAR FOR YOUR BUILD" />
+            <SectionLabel n={phoneMode ? '04' : '05'} title="GEAR FOR YOUR BUILD" />
             <div className={`mt-5 grid grid-cols-1 sm:grid-cols-2 ${phoneMode ? '' : 'lg:grid-cols-3'} gap-4`}>
               {productRecs.map((rec, i) => (
                 <motion.a

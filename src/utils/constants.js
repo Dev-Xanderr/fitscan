@@ -63,6 +63,25 @@ export const ROUTES = Object.freeze({
   LANDING: '/',
   SCAN: '/scan',
   ROUTINE: '/routine',
+  TERMS: '/terms',
+});
+
+/**
+ * localStorage keys. The booth has no backend by default — captured leads
+ * accumulate here and the operator can drain them via DevTools at end of day,
+ * or set VITE_LEAD_ENDPOINT to POST them somewhere instead.
+ */
+export const STORAGE_KEYS = Object.freeze({
+  LEADS: 'fitscan-leads',
+});
+
+/**
+ * Brand contact details exposed in the privacy policy. Real deployments
+ * should override these via env (VITE_PRIVACY_EMAIL etc.) once routed.
+ */
+export const BRAND_CONTACT = Object.freeze({
+  email: import.meta.env.VITE_PRIVACY_EMAIL || 'privacy@squatwolf.com',
+  jurisdiction: 'Dubai, United Arab Emirates',
 });
 
 /**

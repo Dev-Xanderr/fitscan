@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import useScanStore from '../../context/ScanContext';
 import { loadPoseDetector } from '../../services/poseService';
 import { GOALS, ROUTES } from '../../utils/constants';
 import { SectionLabel, BracketFrame, TopBar, BottomBar } from '../UI/Telemetry';
+import ConsentGate from '../Privacy/ConsentGate';
 
 /**
  * Stage 01 — landing screen.
@@ -17,8 +18,11 @@ import { SectionLabel, BracketFrame, TopBar, BottomBar } from '../UI/Telemetry';
  */
 export default function BoothLanding() {
   const navigate = useNavigate();
-  const { setBoothGoal, setGender, reset } = useScanStore();
+  const { setBoothGoal, setGender, setConsentAccepted, reset } = useScanStore();
   const [gender, setLocalGender] = useState('male');
+  // Pending goal — set when the visitor taps a goal, cleared once they
+  // either accept consent (and we navigate) or decline (and we drop it).
+  const [pendingGoal, setPendingGoal] = useState(null);
 
   useEffect(() => {
     reset();
@@ -28,10 +32,24 @@ export default function BoothLanding() {
     loadPoseDetector().catch(() => {});
   }, [reset]);
 
+  // Goal pick: stash the goal, open consent. We don't navigate until consent
+  // is granted — biometric processing should never start before opt-in.
   const pickGoal = (goal) => {
     setGender(gender);
     setBoothGoal(goal);
+    setPendingGoal(goal);
+  };
+
+  const handleConsentAccept = () => {
+    setConsentAccepted(true);
+    setPendingGoal(null);
     navigate(ROUTES.SCAN);
+  };
+
+  const handleConsentDecline = () => {
+    // Visitor backed out — drop the pending goal but leave gender + boothGoal
+    // alone (they may want to try again with a different goal).
+    setPendingGoal(null);
   };
 
   return (
@@ -191,13 +209,24 @@ export default function BoothLanding() {
 
           {/* Mini telemetry footer of the panel */}
           <div className="mt-6 pt-4 border-t border-text/10 flex items-center justify-between font-ui text-[10px] tracking-[0.3em] uppercase text-text/30">
-            <span>READY</span>
+            <Link
+              to={ROUTES.TERMS}
+              className="hover:text-accent transition-colors"
+            >
+              ▸ TERMS
+            </Link>
             <span className="text-accent attract-pulse">▸ TAP TO BEGIN</span>
           </div>
         </motion.div>
       </main>
 
       <BottomBar stage={1} tagline="▸ READ. LOCK. BUILD." />
+
+      <ConsentGate
+        open={pendingGoal !== null}
+        onAccept={handleConsentAccept}
+        onDecline={handleConsentDecline}
+      />
     </div>
   );
 }

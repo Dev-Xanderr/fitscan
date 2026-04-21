@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import useScanStore from '../../context/ScanContext';
 import { loadPoseDetector, detectPose, isFullBodyVisible, warmUpDetector } from '../../services/poseService';
@@ -37,6 +37,10 @@ const STATUS_HINTS = {
 
 export default function CameraView() {
   const navigate = useNavigate();
+  // Belt-and-braces consent guard: the booth's URL bar is locked, but if
+  // anyone deep-links straight to /scan we send them back to landing rather
+  // than silently starting a biometric capture.
+  const consentAccepted = useScanStore((s) => s.consentAccepted);
   const videoRef = useRef(null);
   const animFrameRef = useRef(null);
   const stableStartRef = useRef(null);
@@ -241,8 +245,14 @@ export default function CameraView() {
     }
   }, [captureAndAnalyze, setScanStatus]);
 
-  // Initialize camera and model
+  // Initialize camera and model.
+  //
+  // Gated on consentAccepted — without this gate, even a brief render of
+  // CameraView (e.g. before the route guard's <Navigate> takes effect) would
+  // pop the camera-permission prompt. Don't start any AV pipeline until the
+  // visitor has explicitly opted in via ConsentGate.
   useEffect(() => {
+    if (!consentAccepted) return;
     mountedRef.current = true;
     completedRef.current = false;
 
@@ -345,7 +355,7 @@ export default function CameraView() {
       if (animFrameRef.current) cancelAnimationFrame(animFrameRef.current);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
-  }, []);
+  }, [consentAccepted]);
 
   // Start detection loop when model is ready
   useEffect(() => {
@@ -392,6 +402,16 @@ export default function CameraView() {
     scanStatus === SCAN_STATUS.IDLE ||
     scanStatus === SCAN_STATUS.LOADING ||
     scanStatus === SCAN_STATUS.CAMERA;
+
+  // ── CONSENT GUARD ──────────────────────────────────────────────────────────
+  // If the visitor lands on /scan without a granted consent flag, send them
+  // back to landing where the ConsentGate fires before navigation. This early
+  // return is intentionally below all hooks so we don't violate Rules of Hooks
+  // — the camera-init useEffect will not run because it's wrapped in a guard
+  // already (mountedRef check), but we still want to short-circuit the JSX.
+  if (!consentAccepted) {
+    return <Navigate to={ROUTES.LANDING} replace />;
+  }
 
   // ── MANUAL FALLBACK ────────────────────────────────────────────────────────
   if (showFallback) {

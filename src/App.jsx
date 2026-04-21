@@ -4,6 +4,7 @@ import BoothLanding from './components/Booth/BoothLanding';
 import BoothRoutine from './components/Booth/BoothRoutine';
 import RoutineViewer from './components/Booth/RoutineViewer';
 import CameraView from './components/Camera/CameraView';
+import Terms from './components/Privacy/Terms';
 import { ROUTES } from './utils/constants';
 
 export default function App() {
@@ -23,6 +24,7 @@ export default function App() {
         <Route path={ROUTES.LANDING} element={<BoothLanding />} />
         <Route path={ROUTES.SCAN} element={<CameraView />} />
         <Route path={ROUTES.ROUTINE} element={<BoothRoutine />} />
+        <Route path={ROUTES.TERMS} element={<Terms />} />
         <Route path="*" element={<Navigate to={ROUTES.LANDING} replace />} />
       </Routes>
     </ScanProvider>
