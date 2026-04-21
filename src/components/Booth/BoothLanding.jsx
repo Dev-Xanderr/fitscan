@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import useScanStore from '../../context/ScanContext';
@@ -6,11 +6,6 @@ import { loadPoseDetector } from '../../services/poseService';
 import { GOALS, ROUTES } from '../../utils/constants';
 import { SectionLabel, BracketFrame, TopBar, BottomBar } from '../UI/Telemetry';
 import ConsentGate from '../Privacy/ConsentGate';
-
-// Hero emblem — public/ asset served at the Vite base path. We recolor the
-// white PNG into accent red via CSS mask + background-color so we don't need
-// a separate red-tinted export (and don't have to hand-tune a hue-rotate).
-const EMBLEM_URL = `${import.meta.env.BASE_URL}brand/icon-white.png`;
 
 /**
  * Stage 01 — landing screen.
@@ -28,28 +23,6 @@ export default function BoothLanding() {
   // Pending goal — set when the visitor taps a goal, cleared once they
   // either accept consent (and we navigate) or decline (and we drop it).
   const [pendingGoal, setPendingGoal] = useState(null);
-  // Goal-button hover state lifts the emblem opacity, scale & glow so the
-  // brand stamp visibly reacts when the visitor engages with the panel.
-  const [goalHover, setGoalHover] = useState(false);
-
-  // Mouse parallax — emblem drifts toward the cursor with spring inertia.
-  // We use React state instead of useMotionValue/useSpring because the
-  // motion-value→style.x route silently failed to propagate on the deployed
-  // build (animate prop works fine, style.x with motion values doesn't).
-  // State updates per mousemove are cheap on a single-page kiosk and trigger
-  // framer-motion's spring transition cleanly.
-  const mainRef = useRef(null);
-  const [parallax, setParallax] = useState({ x: 0, y: 0 });
-
-  const handleMouseMove = (e) => {
-    if (!mainRef.current) return;
-    const rect = mainRef.current.getBoundingClientRect();
-    // Normalize to -0.5..0.5 around the centre, scale to a generous px
-    // range so the drift is actually noticeable.
-    const px = (e.clientX - rect.left) / rect.width - 0.5;
-    const py = (e.clientY - rect.top) / rect.height - 0.5;
-    setParallax({ x: px * 110, y: py * 110 });
-  };
 
   useEffect(() => {
     reset();
@@ -105,80 +78,9 @@ export default function BoothLanding() {
       />
 
       {/* Main grid: hero (left) + selector rail (right) */}
-      <main
-        ref={mainRef}
-        onMouseMove={handleMouseMove}
-        className="relative flex-1 grid grid-cols-1 lg:grid-cols-[1.4fr_minmax(380px,1fr)] gap-12 lg:gap-20 items-center px-6 sm:px-10 lg:px-16 py-10 lg:py-12"
-      >
-        {/* BRAND EMBLEM — three-layer stack:
-              1) outer wrapper: positioning anchor, bleeds off the bottom-right
-                 so it reads as a watermark/backdrop instead of a foreground icon
-              2) middle motion layer: entrance fade + cursor parallax + opacity
-                 reacting to goal-button hover (visitor engagement → brand pulse)
-              3) inner motion layer: rotate-in + continuous breath cycle + the
-                 actual recoloured CSS mask
-            All hidden under lg so the phone/tablet layout keeps breathing room. */}
-        <div
-          aria-hidden="true"
-          className="hidden lg:block absolute pointer-events-none z-0"
-          style={{
-            bottom: '-15%',
-            right: '-10%',
-            width: 'min(720px, 56vw)',
-            aspectRatio: '1 / 1',
-          }}
-        >
-          <motion.div
-            initial={{ opacity: 0, x: 0, y: 0 }}
-            animate={{
-              opacity: goalHover ? 0.85 : 0.5,
-              x: parallax.x,
-              y: parallax.y,
-              scale: goalHover ? 1.06 : 1,
-            }}
-            transition={{
-              opacity: { duration: 0.45, ease: 'easeOut' },
-              scale: { duration: 0.5, ease: [0.16, 1, 0.3, 1] },
-              // Spring drift on parallax — soft, lazy follow.
-              x: { type: 'spring', stiffness: 60, damping: 18, mass: 0.7 },
-              y: { type: 'spring', stiffness: 60, damping: 18, mass: 0.7 },
-            }}
-            className="w-full h-full"
-          >
-            <motion.div
-              initial={{ rotate: -14 }}
-              animate={{ rotate: -8, scale: [1, 1.06, 1] }}
-              transition={{
-                rotate: { duration: 1.4, ease: [0.16, 1, 0.3, 1] },
-                // Slow breath cycle — starts after the entrance settles so the
-                // two animations don't fight for the same frame budget.
-                scale: { duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 1.6 },
-              }}
-              className="w-full h-full"
-              style={{
-                maskImage: `url(${EMBLEM_URL})`,
-                WebkitMaskImage: `url(${EMBLEM_URL})`,
-                maskRepeat: 'no-repeat',
-                WebkitMaskRepeat: 'no-repeat',
-                maskSize: 'contain',
-                WebkitMaskSize: 'contain',
-                maskPosition: 'center',
-                WebkitMaskPosition: 'center',
-                backgroundColor: '#B93A32',
-                filter: goalHover
-                  ? 'drop-shadow(0 0 180px rgba(185,58,50,0.85))'
-                  : 'drop-shadow(0 0 100px rgba(185,58,50,0.55))',
-                // CSS-side transition for the filter swap so it eases in/out
-                // instead of snapping when goalHover flips.
-                transition: 'filter 0.5s ease-out',
-              }}
-            />
-          </motion.div>
-        </div>
-
+      <main className="flex-1 grid grid-cols-1 lg:grid-cols-[1.4fr_minmax(380px,1fr)] gap-12 lg:gap-20 items-center px-6 sm:px-10 lg:px-16 py-10 lg:py-12">
         {/* HERO */}
         <motion.div
-          className="relative z-10"
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.7 }}
@@ -250,7 +152,7 @@ export default function BoothLanding() {
 
         {/* SELECTOR RAIL */}
         <motion.div
-          className="relative z-10 bg-bg/60 backdrop-blur-[1px] border border-text/10 p-6 sm:p-8"
+          className="relative bg-bg/60 backdrop-blur-[1px] border border-text/10 p-6 sm:p-8"
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.5, duration: 0.7 }}
@@ -294,15 +196,11 @@ export default function BoothLanding() {
                 label="BUILD MUSCLE"
                 sub={gender === 'female' ? 'Glutes · Legs · Tone' : 'Strength · Size · Power'}
                 onClick={() => pickGoal(GOALS.BUILD_MUSCLE)}
-                onHoverStart={() => setGoalHover(true)}
-                onHoverEnd={() => setGoalHover(false)}
               />
               <GoalButton
                 label="GET LEAN"
                 sub={gender === 'female' ? 'Burn · Shape · Define' : 'Burn · Define · Endurance'}
                 onClick={() => pickGoal(GOALS.LOSE_FAT)}
-                onHoverStart={() => setGoalHover(true)}
-                onHoverEnd={() => setGoalHover(false)}
               />
             </div>
           </div>
@@ -337,14 +235,12 @@ export default function BoothLanding() {
  * leading numeric index was dropped — the two-option list reads cleaner without
  * "01 / 02" pretending it's a longer enumerated set.
  */
-function GoalButton({ label, sub, onClick, onHoverStart, onHoverEnd }) {
+function GoalButton({ label, sub, onClick }) {
   return (
     <motion.button
       whileHover={{ scale: 1.01 }}
       whileTap={{ scale: 0.99 }}
       onClick={onClick}
-      onHoverStart={onHoverStart}
-      onHoverEnd={onHoverEnd}
       className="group relative w-full grid grid-cols-[1fr_auto] items-center gap-4 px-5 py-5 rounded-none hover:rounded-lg transition-all text-left border-2 border-text/15 bg-text/[0.02] text-text hover:bg-accent hover:border-accent hover:shadow-[0_0_60px_-10px_rgba(185,58,50,0.6)] cursor-pointer"
     >
       <div>
