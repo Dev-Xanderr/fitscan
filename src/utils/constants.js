@@ -39,19 +39,24 @@ export const POSE_CONNECTIONS = [
 
 // Per-keypoint pixel-delta (current frame vs previous frame) below which
 // we count a frame as "still". Frame-to-frame metric, NOT averaged across
-// a long buffer — the buffer-average version inflated deltas with
-// accumulated detector noise and made hold-lock effectively impossible.
-export const STABILITY_THRESHOLD = 8;
+// a long buffer.
+//
+// Bumped 8 → 14 after live trace showed natural standing-sway consistently
+// produced per-frame avgDeltas in the 8-12 range, capping holdProgress at
+// ~25% before each bounce.
+export const STABILITY_THRESHOLD = 14;
 export const STABILITY_DURATION = 3000;
 // Number of prior frames we need before the stability check fires. With a
 // frame-to-frame metric we technically only need 1, but keep a small
 // warmup so the pose detector's first-frame jitter doesn't count.
 export const STABILITY_FRAMES = 3;
-// How many consecutive "bad" (above-threshold) frames we tolerate before
-// breaking a HOLD. At ~30fps this is ~130ms of noise tolerance — kills
-// flip-flop bouncing from single jitter spikes without letting the user
-// actually walk out of frame undetected.
-export const STABILITY_BAD_FRAME_TOLERANCE = 4;
+// How many consecutive "bad" frames we tolerate before breaking a HOLD.
+// Counts BOTH above-threshold avgDelta frames AND brief isFullBodyVisible
+// failures (transient confidence dips on a single keypoint). At ~30fps
+// this is ~270ms of noise tolerance — long enough to absorb MoveNet
+// confidence flickers, short enough that a real "user stepped out" still
+// resets the hold quickly.
+export const STABILITY_BAD_FRAME_TOLERANCE = 8;
 export const DETECTION_TIMEOUT = 60000;
 
 // ── Stringly-typed enum centralization ───────────────────────────────────────

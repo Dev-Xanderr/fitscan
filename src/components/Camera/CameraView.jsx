@@ -235,18 +235,41 @@ export default function CameraView() {
           if (prevList.length >= STABILITY_FRAMES) prevList.shift();
           prevList.push(kps);
         } else {
-          stableStartRef.current = null;
-          badFrameCountRef.current = 0;
-          setHoldProgressIfChanged(0);
-          if (prevKpsRef.current.length) prevKpsRef.current.length = 0;
-          const cs = useScanStore.getState().scanStatus;
-          if (
-            cs !== SCAN_STATUS.SEARCHING &&
-            cs !== SCAN_STATUS.IDLE &&
-            cs !== SCAN_STATUS.LOADING &&
-            cs !== SCAN_STATUS.CAMERA
-          ) {
-            setScanStatus(SCAN_STATUS.SEARCHING);
+          // Body NOT fully visible this frame. Two scenarios:
+          //
+          //   (a) We're mid-hold (stableStartRef.current is set). MoveNet
+          //       confidence on a single keypoint just dipped below 0.3 for
+          //       a frame or two — totally normal flicker. Treat it the
+          //       same way we treat above-threshold avgDelta frames: count
+          //       toward the bad-frame tolerance, only reset HOLD if we
+          //       exceed STABILITY_BAD_FRAME_TOLERANCE consecutive misses.
+          //
+          //   (b) We're not in a hold chain yet — the visitor genuinely
+          //       isn't fully in frame. Reset to SEARCHING immediately as
+          //       before; nothing to preserve.
+          if (stableStartRef.current) {
+            badFrameCountRef.current += 1;
+            if (badFrameCountRef.current >= STABILITY_BAD_FRAME_TOLERANCE) {
+              stableStartRef.current = null;
+              badFrameCountRef.current = 0;
+              setHoldProgressIfChanged(0);
+              prevKpsRef.current.length = 0;
+              setScanStatus(SCAN_STATUS.SEARCHING);
+            }
+            // else: silently absorb this frame, leave HOLDING state intact
+          } else {
+            badFrameCountRef.current = 0;
+            setHoldProgressIfChanged(0);
+            if (prevKpsRef.current.length) prevKpsRef.current.length = 0;
+            const cs = useScanStore.getState().scanStatus;
+            if (
+              cs !== SCAN_STATUS.SEARCHING &&
+              cs !== SCAN_STATUS.IDLE &&
+              cs !== SCAN_STATUS.LOADING &&
+              cs !== SCAN_STATUS.CAMERA
+            ) {
+              setScanStatus(SCAN_STATUS.SEARCHING);
+            }
           }
         }
       } else {
