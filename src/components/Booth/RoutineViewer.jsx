@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import LZString from 'lz-string';
 import useScanStore from '../../context/ScanContext';
 import BoothRoutine from './BoothRoutine';
+import { GOALS } from '../../utils/constants';
 
 export default function RoutineViewer() {
   const [error, setError] = useState(null);
@@ -65,26 +66,26 @@ export default function RoutineViewer() {
       },
       bodyType: seed.bt || 'mesomorph',
       frameSize: seed.fs || 'Medium',
-      boothGoal: seed.g || 'build-muscle',
+      boothGoal: seed.g || GOALS.BUILD_MUSCLE,
       routineLoading: false,
       routineError: null,
     });
 
     setReady(true);
-  }, [location.hash]);
+    // The ?r= payload is read once per mount; this viewer is only ever opened
+    // via a fresh navigation from a QR scan, so re-running on hash changes
+    // would only happen via accidental same-page anchor links.
+  }, []);
 
   if (error) {
     return (
-      <div
-        className="min-h-[100dvh] flex items-center justify-center px-6 text-center"
-        style={{ background: '#121212' }}
-      >
+      <div className="min-h-[100dvh] flex items-center justify-center px-6 text-center bg-bg">
         <div>
           <div className="text-4xl mb-4">⚠</div>
-          <p className="text-[#FAFAFA]/60 text-sm max-w-xs mb-4" style={{ fontFamily: "'Manrope', sans-serif" }}>
+          <p className="text-text/60 text-sm max-w-xs mb-4 font-body">
             {error}
           </p>
-          <p className="text-[#FAFAFA]/20 text-[10px]" style={{ fontFamily: "'Azeret Mono', monospace" }}>
+          <p className="text-text/20 text-[10px] font-ui">
             data len: {(new URLSearchParams(window.location.search).get('r') || '').length}
           </p>
         </div>
@@ -94,8 +95,8 @@ export default function RoutineViewer() {
 
   if (!ready) {
     return (
-      <div className="min-h-[100dvh] flex items-center justify-center" style={{ background: '#121212' }}>
-        <div className="text-[#FAFAFA]/40 text-xs tracking-[0.3em] uppercase" style={{ fontFamily: "'Azeret Mono', monospace" }}>
+      <div className="min-h-[100dvh] flex items-center justify-center bg-bg">
+        <div className="text-text/40 text-xs tracking-[0.3em] uppercase font-ui">
           Loading…
         </div>
       </div>

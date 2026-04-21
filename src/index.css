@@ -1,19 +1,33 @@
 @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700&family=Manrope:wght@300;400;500;600;700&family=Azeret+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
-:root {
-  --accent: #B93A32;          /* SQUATWOLF Accent */
-  --accent-light: #d04a40;
-  --accent-dark: #8f2a24;
-  --bg: #121212;              /* SQUATWOLF Black */
-  --surface: #1a1a1a;
-  --surface-light: #222222;
-  --text: #FAFAFA;            /* SQUATWOLF White */
-  --text-muted: #7A7A7A;      /* Support Grey Dark */
-  --grey-light: #EFEFEF;      /* Support Grey Light */
+/* Tailwind v4 theme — these become utility classes:
+   bg-accent / text-accent / border-accent
+   bg-accent-light / bg-accent-dark
+   bg-bg / bg-surface / bg-surface-light
+   text-text / text-text-muted
+   font-heading / font-body / font-ui
+   Treat these as the single source of truth for brand color and typography. */
+@theme {
+  --color-accent: #B93A32;          /* SQUATWOLF Accent */
+  --color-accent-light: #d04a40;
+  --color-accent-dark: #8f2a24;
+  --color-bg: #121212;              /* SQUATWOLF Black */
+  --color-surface: #1a1a1a;
+  --color-surface-light: #222222;
+  --color-text: #FAFAFA;            /* SQUATWOLF White */
+  --color-text-muted: #7A7A7A;      /* Support Grey Dark */
+  --color-grey-light: #EFEFEF;      /* Support Grey Light */
   --font-heading: 'Barlow Condensed', sans-serif;
   --font-body: 'Manrope', sans-serif;
   --font-ui: 'Azeret Mono', monospace;
+}
+
+:root {
+  /* Aliases kept for any non-utility CSS that still references --accent / --bg / --text. */
+  --accent: var(--color-accent);
+  --bg: var(--color-bg);
+  --text: var(--color-text);
 }
 
 /* NOTE: Tailwind v4's preflight already handles box-sizing and margin/padding

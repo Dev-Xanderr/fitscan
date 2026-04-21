@@ -18,11 +18,11 @@ export default function SilhouetteGuide({ width, height }) {
     <>
       <line
         x1={x} y1={y} x2={x + dx * bracketLen} y2={y}
-        stroke="#b93a32" strokeWidth={bracketW} strokeLinecap="round"
+        stroke="var(--color-accent)" strokeWidth={bracketW} strokeLinecap="round"
       />
       <line
         x1={x} y1={y} x2={x} y2={y + dy * bracketLen}
-        stroke="#b93a32" strokeWidth={bracketW} strokeLinecap="round"
+        stroke="var(--color-accent)" strokeWidth={bracketW} strokeLinecap="round"
       />
     </>
   );
@@ -66,7 +66,7 @@ export default function SilhouetteGuide({ width, height }) {
       {/* Body silhouette — thick and glowing, centered */}
       <g
         transform={`translate(${cx}, ${height * 0.12})`}
-        stroke="#b93a32"
+        stroke="var(--color-accent)"
         strokeWidth={5 * scale}
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -99,16 +99,16 @@ export default function SilhouetteGuide({ width, height }) {
           x={cx - 120} y={height - pad - 46}
           width={240} height={34} rx={17}
           fill="rgba(0,0,0,0.75)"
-          stroke="#B93A32" strokeWidth={1.5}
+          stroke="var(--color-accent)" strokeWidth={1.5}
         />
         <text
           x={cx} y={height - pad - 24}
           textAnchor="middle"
-          fill="#FAFAFA"
+          fill="var(--color-text)"
           fontSize={13}
           fontWeight={700}
           letterSpacing={3}
-          style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
+          className="font-heading"
         >
           STAND IN FRAME
         </text>

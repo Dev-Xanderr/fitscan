@@ -4,6 +4,7 @@ import BoothLanding from './components/Booth/BoothLanding';
 import BoothRoutine from './components/Booth/BoothRoutine';
 import RoutineViewer from './components/Booth/RoutineViewer';
 import CameraView from './components/Camera/CameraView';
+import { ROUTES } from './utils/constants';
 
 export default function App() {
   // If URL has ?r=... it's a phone QR scan — render viewer directly.
@@ -19,10 +20,10 @@ export default function App() {
   return (
     <ScanProvider>
       <Routes>
-        <Route path="/" element={<BoothLanding />} />
-        <Route path="/scan" element={<CameraView />} />
-        <Route path="/routine" element={<BoothRoutine />} />
-        <Route path="*" element={<Navigate to="/" replace />} />
+        <Route path={ROUTES.LANDING} element={<BoothLanding />} />
+        <Route path={ROUTES.SCAN} element={<CameraView />} />
+        <Route path={ROUTES.ROUTINE} element={<BoothRoutine />} />
+        <Route path="*" element={<Navigate to={ROUTES.LANDING} replace />} />
       </Routes>
     </ScanProvider>
   );

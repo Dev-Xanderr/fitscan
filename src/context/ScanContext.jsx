@@ -1,5 +1,6 @@
 import { createContext } from 'react';
 import { create } from 'zustand';
+import { SCAN_STATUS, GOALS } from '../utils/constants';
 
 const DEFAULT_USER_INFO = {
   name: '',
@@ -9,7 +10,7 @@ const DEFAULT_USER_INFO = {
   heightUnit: 'cm',
   weight: '75',
   weightUnit: 'kg',
-  fitnessGoals: ['build-muscle'],
+  fitnessGoals: [GOALS.BUILD_MUSCLE],
   experienceLevel: 'intermediate',
   injuries: '',
   equipment: ['full-gym'],
@@ -21,12 +22,12 @@ const useScanStore = create((set) => ({
   userInfo: { ...DEFAULT_USER_INFO },
 
   // Booth-selected goal — visitor taps Muscle/Lean before scanning
-  boothGoal: 'build-muscle',
+  boothGoal: GOALS.BUILD_MUSCLE,
 
   // Scan data
   keypoints: null,
   snapshot: null,
-  scanStatus: 'idle', // idle | searching | detected | holding | complete
+  scanStatus: SCAN_STATUS.IDLE,
 
   // Analysis
   bodyMetrics: null,
@@ -44,15 +45,18 @@ const useScanStore = create((set) => ({
   setUserInfo: (info) => set((s) => ({ userInfo: { ...s.userInfo, ...info } })),
   setGender: (gender) => set((s) => ({ userInfo: { ...s.userInfo, gender } })),
   setBoothGoal: (boothGoal) => {
-    // Map UI goal → underlying userInfo.fitnessGoals so the generator picks it up
+    // Map UI goal → underlying userInfo.fitnessGoals so the generator picks it up.
+    // The generator reads goals.includes('lose-fat' | 'build-muscle' | 'athletic')
+    // so values must match those literals exactly — that's why these stay strings
+    // and not nested constants.
     const map = {
-      'build-muscle': ['build-muscle'],
-      'lose-fat': ['lose-fat'],
+      [GOALS.BUILD_MUSCLE]: [GOALS.BUILD_MUSCLE],
+      [GOALS.LOSE_FAT]: [GOALS.LOSE_FAT],
       athletic: ['athletic'],
     };
     set((s) => ({
       boothGoal,
-      userInfo: { ...s.userInfo, fitnessGoals: map[boothGoal] || ['build-muscle'] },
+      userInfo: { ...s.userInfo, fitnessGoals: map[boothGoal] || [GOALS.BUILD_MUSCLE] },
     }));
   },
   setScanData: (keypoints, snapshot) => set({ keypoints, snapshot }),
@@ -65,10 +69,10 @@ const useScanStore = create((set) => ({
   reset: () =>
     set({
       userInfo: { ...DEFAULT_USER_INFO },
-      boothGoal: 'build-muscle',
+      boothGoal: GOALS.BUILD_MUSCLE,
       keypoints: null,
       snapshot: null,
-      scanStatus: 'idle',
+      scanStatus: SCAN_STATUS.IDLE,
       bodyMetrics: null,
       bodyType: null,
       frameSize: null,

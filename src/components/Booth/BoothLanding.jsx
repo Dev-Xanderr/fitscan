@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import useScanStore from '../../context/ScanContext';
 import WolfMark from './WolfMark';
 import { loadPoseDetector } from '../../services/poseService';
+import { GOALS, ROUTES } from '../../utils/constants';
 
 export default function BoothLanding() {
   const navigate = useNavigate();
@@ -19,11 +20,11 @@ export default function BoothLanding() {
   const pickGoal = (goal) => {
     setGender(gender);
     setBoothGoal(goal);
-    navigate('/scan');
+    navigate(ROUTES.SCAN);
   };
 
   return (
-    <div className="min-h-screen w-full flex flex-col px-10 sm:px-16 lg:px-24 py-12 lg:py-14 relative overflow-hidden bg-[#121212] text-[#FAFAFA]">
+    <div className="min-h-screen w-full flex flex-col px-10 sm:px-16 lg:px-24 py-12 lg:py-14 relative overflow-hidden bg-bg text-text">
       {/* Background gradient */}
       <div
         className="absolute inset-0 -z-10"
@@ -49,14 +50,11 @@ export default function BoothLanding() {
       >
         <div className="flex items-center gap-3">
           <WolfMark size={44} />
-          <span className="text-xl tracking-[0.35em]" style={{ fontFamily: "'Barlow Condensed', sans-serif" }}>
+          <span className="text-xl tracking-[0.35em] font-heading">
             SQUATWOLF
           </span>
         </div>
-        <div
-          className="text-[10px] tracking-[0.3em] uppercase text-[#FAFAFA]/50 border border-[#FAFAFA]/20 rounded-none px-4 py-2"
-          style={{ fontFamily: "'Azeret Mono', monospace" }}
-        >
+        <div className="text-[10px] tracking-[0.3em] uppercase text-text/50 border border-text/20 rounded-none px-4 py-2 font-ui">
           Live
         </div>
       </motion.div>
@@ -69,26 +67,25 @@ export default function BoothLanding() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.15, duration: 0.7 }}
-            className="mb-6 inline-flex items-center gap-2 text-[#b93a32] text-[10px] font-semibold tracking-[0.4em] uppercase"
+            className="mb-6 inline-flex items-center gap-2 text-accent text-[10px] font-semibold tracking-[0.4em] uppercase"
           >
-            <span className="w-8 h-px bg-[#b93a32]" />
+            <span className="w-8 h-px bg-accent" />
             Born in Dubai, Engineered for Gym
           </motion.div>
 
           <motion.h1
-            className="font-bold leading-[0.82] tracking-tight"
-            style={{ fontFamily: "'Barlow Condensed', sans-serif" }}
+            className="font-bold leading-[0.82] tracking-tight font-heading"
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25, duration: 0.8 }}
           >
             <span className="block text-7xl sm:text-8xl md:text-[9rem]">STEP IN.</span>
             <span className="block text-7xl sm:text-8xl md:text-[9rem]">GET SCANNED.</span>
-            <span className="block text-7xl sm:text-8xl md:text-[9rem] text-[#b93a32]">OWN YOUR WORKOUT.</span>
+            <span className="block text-7xl sm:text-8xl md:text-[9rem] text-accent">OWN YOUR WORKOUT.</span>
           </motion.h1>
 
           <motion.p
-            className="text-[#FAFAFA]/60 text-lg max-w-xl mt-8"
+            className="text-text/60 text-lg max-w-xl mt-8"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.6 }}
@@ -107,10 +104,7 @@ export default function BoothLanding() {
         >
           {/* Gender toggle */}
           <div>
-            <p
-              className="text-[#FAFAFA]/40 text-[10px] tracking-[0.3em] uppercase mb-3"
-              style={{ fontFamily: "'Azeret Mono', monospace" }}
-            >
+            <p className="text-text/40 text-[10px] tracking-[0.3em] uppercase mb-3 font-ui">
               I am
             </p>
             <div className="grid grid-cols-2 gap-3">
@@ -118,12 +112,11 @@ export default function BoothLanding() {
                 <button
                   key={g}
                   onClick={() => setLocalGender(g)}
-                  className={`py-3 rounded-none transition-all border text-sm tracking-[0.15em] uppercase ${
+                  className={`py-3 rounded-none transition-all border text-sm tracking-[0.15em] uppercase font-ui ${
                     gender === g
-                      ? 'bg-[#B93A32] border-[#B93A32] text-[#FAFAFA]'
-                      : 'border-[#FAFAFA]/20 text-[#FAFAFA]/50 hover:border-[#FAFAFA]/40'
+                      ? 'bg-accent border-accent text-text'
+                      : 'border-text/20 text-text/50 hover:border-text/40'
                   }`}
-                  style={{ fontFamily: "'Azeret Mono', monospace" }}
                 >
                   {g === 'male' ? 'Male' : 'Female'}
                 </button>
@@ -133,39 +126,36 @@ export default function BoothLanding() {
 
           {/* Divider */}
           <div className="flex items-center gap-3">
-            <span className="flex-1 h-px bg-[#FAFAFA]/10" />
-            <span
-              className="text-[#FAFAFA]/30 text-[10px] tracking-[0.3em] uppercase"
-              style={{ fontFamily: "'Azeret Mono', monospace" }}
-            >
+            <span className="flex-1 h-px bg-text/10" />
+            <span className="text-text/30 text-[10px] tracking-[0.3em] uppercase font-ui">
               Goal
             </span>
-            <span className="flex-1 h-px bg-[#FAFAFA]/10" />
+            <span className="flex-1 h-px bg-text/10" />
           </div>
 
           {/* Goal buttons */}
           <GoalButton
             label="BUILD MUSCLE"
             sub={gender === 'female' ? 'Glutes · Legs · Tone' : 'Strength · Size · Power'}
-            onClick={() => pickGoal('build-muscle')}
+            onClick={() => pickGoal(GOALS.BUILD_MUSCLE)}
           />
           <GoalButton
             label="GET LEAN"
             sub={gender === 'female' ? 'Burn · Shape · Define' : 'Burn · Define · Endurance'}
-            onClick={() => pickGoal('lose-fat')}
+            onClick={() => pickGoal(GOALS.LOSE_FAT)}
           />
         </motion.div>
       </div>
 
       {/* Bottom bar */}
       <motion.div
-        className="w-full flex items-center justify-between text-[#FAFAFA]/40 text-[10px] tracking-[0.3em] uppercase mt-8 pt-6 border-t border-[#FAFAFA]/10"
+        className="w-full flex items-center justify-between text-text/40 text-[10px] tracking-[0.3em] uppercase mt-8 pt-6 border-t border-text/10"
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ delay: 1, duration: 0.6 }}
       >
         <span>squatwolf.com</span>
-        <span className="attract-pulse text-[#FAFAFA]/70 text-xs">▸ Tap to begin</span>
+        <span className="attract-pulse text-text/70 text-xs">▸ Tap to begin</span>
         <span>Born in Dubai</span>
       </motion.div>
     </div>
@@ -178,18 +168,15 @@ function GoalButton({ label, sub, onClick }) {
       whileHover={{ scale: 1.04 }}
       whileTap={{ scale: 0.96 }}
       onClick={onClick}
-      className="group relative px-10 py-7 rounded-none hover:rounded-lg transition-all min-w-[260px] text-left border-2 border-[#FAFAFA]/20 bg-[#FAFAFA]/[0.02] text-[#FAFAFA] hover:bg-[#B93A32] hover:border-[#B93A32] hover:shadow-[0_0_60px_-10px_rgba(185,58,50,0.6)]"
+      className="group relative px-10 py-7 rounded-none hover:rounded-lg transition-all min-w-[260px] text-left border-2 border-text/20 bg-text/[0.02] text-text hover:bg-accent hover:border-accent hover:shadow-[0_0_60px_-10px_rgba(185,58,50,0.6)]"
     >
       <div
-        className="text-3xl sm:text-4xl mb-1"
-        style={{ fontFamily: "'Barlow Condensed', sans-serif", letterSpacing: '0.05em' }}
+        className="text-3xl sm:text-4xl mb-1 font-heading"
+        style={{ letterSpacing: '0.05em' }}
       >
         {label}
       </div>
-      <div
-        className="text-[#FAFAFA]/50 text-sm tracking-wider uppercase group-hover:text-[#FAFAFA]/80"
-        style={{ fontFamily: "'Azeret Mono', monospace" }}
-      >
+      <div className="text-text/50 text-sm tracking-wider uppercase group-hover:text-text/80 font-ui">
         {sub}
       </div>
       <div className="absolute top-5 right-5 text-xl opacity-70 group-hover:translate-x-1 transition-transform">

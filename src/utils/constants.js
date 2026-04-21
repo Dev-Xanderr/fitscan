@@ -1,26 +1,3 @@
-export const ACCENT_COLOR = '#b93a32';
-export const ACCENT_RGB = '185, 58, 50';
-
-export const FITNESS_GOALS = [
-  { id: 'lose-fat', label: 'Lose Fat', icon: '🔥' },
-  { id: 'build-muscle', label: 'Build Muscle', icon: '💪' },
-  { id: 'stay-active', label: 'Stay Active', icon: '🏃' },
-  { id: 'athletic', label: 'Athletic Performance', icon: '🏆' },
-];
-
-export const EXPERIENCE_LEVELS = [
-  { id: 'beginner', label: 'Beginner', desc: 'New to training or < 6 months' },
-  { id: 'intermediate', label: 'Intermediate', desc: '6 months – 2 years' },
-  { id: 'advanced', label: 'Advanced', desc: '2+ years consistent training' },
-];
-
-export const EQUIPMENT_OPTIONS = [
-  { id: 'bodyweight', label: 'Bodyweight Only' },
-  { id: 'dumbbells', label: 'Dumbbells' },
-  { id: 'home-gym', label: 'Home Gym' },
-  { id: 'full-gym', label: 'Full Gym' },
-];
-
 export const BODY_TYPES = {
   ectomorph: {
     name: 'Ectomorph',
@@ -64,3 +41,36 @@ export const STABILITY_THRESHOLD = 5;
 export const STABILITY_DURATION = 3000;
 export const STABILITY_FRAMES = 10;
 export const DETECTION_TIMEOUT = 60000;
+
+// ── Stringly-typed enum centralization ───────────────────────────────────────
+// These were originally raw string literals scattered across components.
+// Centralizing them here means a typo at a call site is a runtime
+// `undefined` rather than a silently-broken state machine.
+
+/** Scan flow state machine values used by ScanContext.scanStatus. */
+export const SCAN_STATUS = Object.freeze({
+  IDLE: 'idle',
+  CAMERA: 'camera',
+  LOADING: 'loading',
+  SEARCHING: 'searching',
+  DETECTED: 'detected',
+  HOLDING: 'holding',
+  COMPLETE: 'complete',
+});
+
+/** React Router paths. Keep in sync with <Route> declarations in App.jsx. */
+export const ROUTES = Object.freeze({
+  LANDING: '/',
+  SCAN: '/scan',
+  ROUTINE: '/routine',
+});
+
+/**
+ * Booth goal options. The string values are baked into the QR payload (seed.g)
+ * and into productRecommendations / localRoutineGenerator goal lookups, so
+ * changing the values is a breaking change for old QR codes.
+ */
+export const GOALS = Object.freeze({
+  BUILD_MUSCLE: 'build-muscle',
+  LOSE_FAT: 'lose-fat',
+});

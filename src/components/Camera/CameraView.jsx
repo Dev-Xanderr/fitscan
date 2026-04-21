@@ -2,9 +2,9 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import useScanStore from '../../context/ScanContext';
-import { loadPoseDetector, detectPose, isFullBodyVisible } from '../../services/poseService';
-import { calculateBodyMetrics, classifyBodyType, classifyFrameSize, getProportionalNotes, calculateBMI } from '../../utils/bodyMetrics';
-import { STABILITY_THRESHOLD, STABILITY_FRAMES, STABILITY_DURATION, DETECTION_TIMEOUT, BODY_TYPES } from '../../utils/constants';
+import { loadPoseDetector, detectPose, isFullBodyVisible, warmUpDetector } from '../../services/poseService';
+import { calculateBodyMetrics, classifyBodyType, classifyFrameSize, getProportionalNotes, calculateBMI, normalizeUserMeasurements } from '../../utils/bodyMetrics';
+import { STABILITY_THRESHOLD, STABILITY_FRAMES, STABILITY_DURATION, DETECTION_TIMEOUT, BODY_TYPES, SCAN_STATUS, ROUTES } from '../../utils/constants';
 import { generateLocalRoutine } from '../../services/localRoutineGenerator';
 import SkeletonOverlay from './SkeletonOverlay';
 import SilhouetteGuide from './SilhouetteGuide';
@@ -34,7 +34,16 @@ export default function CameraView() {
   const streamRef = useRef(null);
   const mountedRef = useRef(true);
 
-  const { userInfo, setScanData, setScanStatus, scanStatus, setAnalysis, setRoutine, setRoutineLoading, setRoutineError } = useScanStore();
+  // Per-field selectors so per-frame setState calls don't fan out re-renders to
+  // every consumer of the store.
+  const userInfo = useScanStore((s) => s.userInfo);
+  const setScanData = useScanStore((s) => s.setScanData);
+  const setScanStatus = useScanStore((s) => s.setScanStatus);
+  const scanStatus = useScanStore((s) => s.scanStatus);
+  const setAnalysis = useScanStore((s) => s.setAnalysis);
+  const setRoutine = useScanStore((s) => s.setRoutine);
+  const setRoutineLoading = useScanStore((s) => s.setRoutineLoading);
+  const setRoutineError = useScanStore((s) => s.setRoutineError);
   const [currentKeypoints, setCurrentKeypoints] = useState(null);
   const [loading, setLoading] = useState(true);
   const [statusMsg, setStatusMsg] = useState('Starting camera...');
@@ -45,13 +54,36 @@ export default function CameraView() {
   const [showFallback, setShowFallback] = useState(false);
   const [cameraReady, setCameraReady] = useState(false);
 
-  // Cleanup helper
   const stopStream = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((t) => t.stop());
       streamRef.current = null;
     }
   }, []);
+
+  // Booth flow: skip /results and go straight to /routine. Generate the routine
+  // offline (no API) while the success animation plays. Shared by the camera
+  // capture path and the manual fallback so they can't drift.
+  const kickOffRoutine = useCallback((bodyType, frameSize, metrics, notes) => {
+    setRoutineLoading(true);
+    (async () => {
+      try {
+        const typeInfo = BODY_TYPES[bodyType] || BODY_TYPES.mesomorph;
+        const analysisData = {
+          bodyType: typeInfo.name,
+          frameSize,
+          bodyMetrics: metrics,
+          proportionalNotes: notes,
+          salt: useScanStore.getState().routineSalt,
+        };
+        const result = await generateLocalRoutine(userInfo, analysisData);
+        setRoutine(result);
+      } catch (err) {
+        console.error('Local routine generation failed:', err);
+        setRoutineError(err.message || 'Routine generation failed');
+      }
+    })();
+  }, [userInfo, setRoutine, setRoutineLoading, setRoutineError]);
 
   const captureAndAnalyze = useCallback((keypoints) => {
     if (completedRef.current) return;
@@ -67,12 +99,7 @@ export default function CameraView() {
     ctx.drawImage(video, 0, 0);
     const snapshot = offscreen.toDataURL('image/jpeg', 0.9);
 
-    let heightCm = parseFloat(userInfo.height) || 170;
-    if (userInfo.heightUnit === 'in') heightCm = heightCm * 2.54;
-
-    let weightKg = parseFloat(userInfo.weight) || 70;
-    if (userInfo.weightUnit === 'lbs') weightKg = weightKg * 0.453592;
-
+    const { heightCm, weightKg } = normalizeUserMeasurements(userInfo);
     const metrics = calculateBodyMetrics(keypoints, heightCm);
     const bmi = calculateBMI(weightKg, heightCm);
     const bodyType = classifyBodyType(metrics, bmi);
@@ -81,33 +108,13 @@ export default function CameraView() {
 
     setScanData(keypoints, snapshot);
     setAnalysis(metrics, bodyType, frameSize, notes);
-    setScanStatus('complete');
+    setScanStatus(SCAN_STATUS.COMPLETE);
     stopStream();
 
-    // Booth flow: skip /results and go straight to /routine.
-    // Generate the routine offline (no API) while the success animation plays.
-    setRoutineLoading(true);
-    (async () => {
-      try {
-        const typeInfo = BODY_TYPES[bodyType] || BODY_TYPES.mesomorph;
-        const currentSalt = useScanStore.getState().routineSalt;
-        const analysisData = {
-          bodyType: typeInfo.name,
-          frameSize,
-          bodyMetrics: metrics,
-          proportionalNotes: notes,
-          salt: currentSalt,
-        };
-        const result = await generateLocalRoutine(userInfo, analysisData);
-        setRoutine(result);
-      } catch (err) {
-        console.error('Local routine generation failed:', err);
-        setRoutineError(err.message || 'Routine generation failed');
-      }
-    })();
+    kickOffRoutine(bodyType, frameSize, metrics, notes);
 
-    setTimeout(() => navigate('/routine'), 1200);
-  }, [userInfo, setScanData, setAnalysis, setScanStatus, navigate, stopStream, setRoutine, setRoutineLoading, setRoutineError]);
+    setTimeout(() => navigate(ROUTES.ROUTINE), 1200);
+  }, [userInfo, setScanData, setAnalysis, setScanStatus, navigate, stopStream, kickOffRoutine]);
 
   // Detection loop
   const runDetection = useCallback(async () => {
@@ -120,6 +127,12 @@ export default function CameraView() {
       return;
     }
 
+    // Local change-detection helpers — avoid setting state every frame so
+    // skeleton/progress consumers don't re-render at ~30fps for no reason.
+    const setHoldProgressIfChanged = (next) => {
+      setHoldProgress((prev) => (prev === next ? prev : next));
+    };
+
     try {
       const pose = await detectPose(detector, video);
 
@@ -129,8 +142,12 @@ export default function CameraView() {
 
         if (isFullBodyVisible(kps)) {
           const currentStatus = useScanStore.getState().scanStatus;
-          if (currentStatus !== 'detected' && currentStatus !== 'holding' && currentStatus !== 'complete') {
-            setScanStatus('detected');
+          if (
+            currentStatus !== SCAN_STATUS.DETECTED &&
+            currentStatus !== SCAN_STATUS.HOLDING &&
+            currentStatus !== SCAN_STATUS.COMPLETE
+          ) {
+            setScanStatus(SCAN_STATUS.DETECTED);
           }
 
           const prevList = prevKpsRef.current;
@@ -147,10 +164,10 @@ export default function CameraView() {
             if (avgDelta < STABILITY_THRESHOLD) {
               if (!stableStartRef.current) {
                 stableStartRef.current = Date.now();
-                setScanStatus('holding');
+                setScanStatus(SCAN_STATUS.HOLDING);
               }
               const elapsed = Date.now() - stableStartRef.current;
-              setHoldProgress(Math.min(elapsed / STABILITY_DURATION, 1));
+              setHoldProgressIfChanged(Math.min(elapsed / STABILITY_DURATION, 1));
 
               if (elapsed >= STABILITY_DURATION) {
                 captureAndAnalyze(kps);
@@ -158,27 +175,34 @@ export default function CameraView() {
               }
             } else {
               stableStartRef.current = null;
-              setHoldProgress(0);
+              setHoldProgressIfChanged(0);
               const cs = useScanStore.getState().scanStatus;
-              if (cs === 'holding') setScanStatus('detected');
+              if (cs === SCAN_STATUS.HOLDING) setScanStatus(SCAN_STATUS.DETECTED);
             }
           }
 
-          prevKpsRef.current = [...prevList.slice(-(STABILITY_FRAMES - 1)), kps];
+          // Ring buffer in place — avoids allocating two arrays per frame.
+          if (prevList.length >= STABILITY_FRAMES) prevList.shift();
+          prevList.push(kps);
         } else {
           stableStartRef.current = null;
-          setHoldProgress(0);
-          prevKpsRef.current = [];
+          setHoldProgressIfChanged(0);
+          if (prevKpsRef.current.length) prevKpsRef.current.length = 0;
           const cs = useScanStore.getState().scanStatus;
-          if (cs !== 'searching' && cs !== 'idle' && cs !== 'loading' && cs !== 'camera') {
-            setScanStatus('searching');
+          if (
+            cs !== SCAN_STATUS.SEARCHING &&
+            cs !== SCAN_STATUS.IDLE &&
+            cs !== SCAN_STATUS.LOADING &&
+            cs !== SCAN_STATUS.CAMERA
+          ) {
+            setScanStatus(SCAN_STATUS.SEARCHING);
           }
         }
       } else {
-        setCurrentKeypoints(null);
+        setCurrentKeypoints((prev) => (prev === null ? prev : null));
         stableStartRef.current = null;
-        setHoldProgress(0);
-        prevKpsRef.current = [];
+        setHoldProgressIfChanged(0);
+        if (prevKpsRef.current.length) prevKpsRef.current.length = 0;
       }
     } catch (err) {
       console.warn('Detection frame error:', err);
@@ -195,7 +219,7 @@ export default function CameraView() {
     completedRef.current = false;
 
     async function init() {
-      setScanStatus('camera');
+      setScanStatus(SCAN_STATUS.CAMERA);
       setStatusMsg('Starting camera...');
 
       // Run camera + model loading IN PARALLEL — whichever takes longer is the bottleneck,
@@ -243,10 +267,16 @@ export default function CameraView() {
           const video = videoRef.current;
           if (!video) { resolve(); return; }
           if (video.readyState >= 2) { resolve(); return; }
-          const onReady = () => { video.removeEventListener('loadeddata', onReady); resolve(); };
+          let fallback;
+          const finish = () => {
+            video.removeEventListener('loadeddata', onReady);
+            if (fallback) clearTimeout(fallback);
+            resolve();
+          };
+          const onReady = () => finish();
           video.addEventListener('loadeddata', onReady);
           video.play().catch(() => {});
-          setTimeout(resolve, 4000);
+          fallback = setTimeout(finish, 4000);
         });
 
         if (!mountedRef.current) { stopStream(); return; }
@@ -259,24 +289,19 @@ export default function CameraView() {
         setCameraReady(true);
       }
 
-      // Warm up WebGL shaders with a blank-canvas inference so the first real
-      // frame doesn't stutter while shaders compile.
-      try {
-        const blank = document.createElement('canvas');
-        blank.width = 192; blank.height = 192;
-        await detector.estimatePoses(blank, { maxPoses: 1 });
-      } catch (_) { /* warmup failure is non-fatal */ }
+      // Idempotent — only the first visitor pays the WebGL shader cost.
+      await warmUpDetector(detector);
 
       if (!mountedRef.current) return;
 
       detectorRef.current = detector;
       setLoading(false);
-      setScanStatus('searching');
+      setScanStatus(SCAN_STATUS.SEARCHING);
       setStatusMsg('Stand in frame — full body visible');
 
       timeoutRef.current = setTimeout(() => {
         const status = useScanStore.getState().scanStatus;
-        if (status === 'searching' || status === 'loading') setShowFallback(true);
+        if (status === SCAN_STATUS.SEARCHING || status === SCAN_STATUS.LOADING) setShowFallback(true);
       }, DETECTION_TIMEOUT);
     }
 
@@ -317,37 +342,20 @@ export default function CameraView() {
     stopStream();
     setScanData(null, null);
     setAnalysis(mockMetrics, type, frameSize, notes);
-    setScanStatus('complete');
+    setScanStatus(SCAN_STATUS.COMPLETE);
 
-    // Generate routine offline, then go to /routine (booth flow — no /results page)
-    setRoutineLoading(true);
-    (async () => {
-      try {
-        const typeInfo = BODY_TYPES[type] || BODY_TYPES.mesomorph;
-        const mockSalt = useScanStore.getState().routineSalt;
-        const analysisData = {
-          bodyType: typeInfo.name,
-          frameSize,
-          bodyMetrics: mockMetrics,
-          proportionalNotes: notes,
-          salt: mockSalt,
-        };
-        const result = await generateLocalRoutine(userInfo, analysisData);
-        setRoutine(result);
-      } catch (err) {
-        console.error('Local routine generation failed:', err);
-        setRoutineError(err.message || 'Routine generation failed');
-      }
-    })();
+    kickOffRoutine(type, frameSize, mockMetrics, notes);
 
-    navigate('/routine');
+    navigate(ROUTES.ROUTINE);
   };
+
+
 
   if (showFallback) {
     return (
       <PageTransition>
         <div className="min-h-screen flex flex-col items-center justify-center px-6 py-12">
-          <h1 className="text-5xl mb-2">Manual <span className="text-[#b93a32]">Selection</span></h1>
+          <h1 className="text-5xl mb-2">Manual <span className="text-accent">Selection</span></h1>
           <p className="text-white/40 mb-10 text-center max-w-md">
             {error || 'Detection timed out.'} Select your body type manually.
           </p>
@@ -362,7 +370,7 @@ export default function CameraView() {
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
                 onClick={() => handleManualSelect(bt.type)}
-                className="glass rounded-2xl p-8 text-center cursor-pointer hover:border-[#b93a32]/30 transition-colors"
+                className="glass rounded-2xl p-8 text-center cursor-pointer hover:border-accent/30 transition-colors"
               >
                 <span className="text-5xl block mb-4">{bt.icon}</span>
                 <h3 className="text-2xl mb-1">{bt.label}</h3>
@@ -383,12 +391,12 @@ export default function CameraView() {
       <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8">
         {/* Status */}
         <motion.div className="mb-6 text-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-          <h1 className="text-4xl sm:text-5xl mb-2">THE <span className="text-[#b93a32]">SCAN</span></h1>
+          <h1 className="text-4xl sm:text-5xl mb-2">THE <span className="text-accent">SCAN</span></h1>
           <div className="flex items-center justify-center gap-3">
             <div className={`w-3 h-3 rounded-full ${
-              scanStatus === 'complete' ? 'bg-green-400' :
-              scanStatus === 'holding' ? 'bg-[#b93a32] pulse-glow' :
-              scanStatus === 'detected' ? 'bg-[#b93a32]' :
+              scanStatus === SCAN_STATUS.COMPLETE ? 'bg-green-400' :
+              scanStatus === SCAN_STATUS.HOLDING ? 'bg-accent pulse-glow' :
+              scanStatus === SCAN_STATUS.DETECTED ? 'bg-accent' :
               'bg-white/30 pulse-glow'
             }`} />
             <span className="text-white/60">{STATUS_LABELS[scanStatus] || statusMsg}</span>
@@ -417,7 +425,12 @@ export default function CameraView() {
 
           {/* Silhouette guide */}
           <AnimatePresence>
-            {(scanStatus === 'searching' || scanStatus === 'idle' || scanStatus === 'loading' || scanStatus === 'camera') && !loading && (
+            {(
+              scanStatus === SCAN_STATUS.SEARCHING ||
+              scanStatus === SCAN_STATUS.IDLE ||
+              scanStatus === SCAN_STATUS.LOADING ||
+              scanStatus === SCAN_STATUS.CAMERA
+            ) && !loading && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -444,12 +457,12 @@ export default function CameraView() {
           )}
 
           {/* Hold progress ring */}
-          {scanStatus === 'holding' && (
+          {scanStatus === SCAN_STATUS.HOLDING && (
             <div className="absolute top-4 right-4 z-10">
               <svg width="60" height="60" viewBox="0 0 60 60">
                 <circle cx="30" cy="30" r="26" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="4" />
                 <circle
-                  cx="30" cy="30" r="26" fill="none" stroke="#b93a32" strokeWidth="4"
+                  cx="30" cy="30" r="26" fill="none" stroke="var(--color-accent)" strokeWidth="4"
                   strokeDasharray={2 * Math.PI * 26}
                   strokeDashoffset={2 * Math.PI * 26 * (1 - holdProgress)}
                   strokeLinecap="round"
@@ -464,7 +477,7 @@ export default function CameraView() {
 
           {/* Scan complete overlay */}
           <AnimatePresence>
-            {scanStatus === 'complete' && (
+            {scanStatus === SCAN_STATUS.COMPLETE && (
               <motion.div
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
@@ -474,7 +487,7 @@ export default function CameraView() {
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: 'spring', stiffness: 200 }}
-                  className="bg-[#b93a32] rounded-full p-6"
+                  className="bg-accent rounded-full p-6"
                 >
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="black" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="20 6 9 17 4 12" />

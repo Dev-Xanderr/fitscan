@@ -4,7 +4,7 @@ export default function LoadingSpinner({ size = 48, text = '' }) {
   return (
     <div className="flex flex-col items-center gap-4">
       <motion.div
-        className="border-2 border-white/10 border-t-[#b93a32] rounded-full"
+        className="border-2 border-white/10 border-t-accent rounded-full"
         style={{ width: size, height: size }}
         animate={{ rotate: 360 }}
         transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}

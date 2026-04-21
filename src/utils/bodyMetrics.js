@@ -145,3 +145,15 @@ export function calculateBMI(weightKg, heightCm) {
   const heightM = heightCm / 100;
   return Math.round((weightKg / (heightM * heightM)) * 10) / 10;
 }
+
+// Normalize raw userInfo height/weight (with unit fields) to metric numbers.
+// Used by every entry point that feeds metrics into pose analysis.
+export function normalizeUserMeasurements(userInfo) {
+  let heightCm = parseFloat(userInfo.height) || 170;
+  if (userInfo.heightUnit === 'in') heightCm *= 2.54;
+
+  let weightKg = parseFloat(userInfo.weight) || 70;
+  if (userInfo.weightUnit === 'lbs') weightKg *= 0.453592;
+
+  return { heightCm, weightKg };
+}

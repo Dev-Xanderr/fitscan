@@ -1,6 +1,21 @@
+import { memo } from 'react';
 import { POSE_CONNECTIONS } from '../../utils/constants';
 
-export default function SkeletonOverlay({ keypoints, width, height, videoWidth, videoHeight }) {
+// Static SVG filter — extracted so React doesn't re-create the same defs tree
+// on every detection frame.
+const GlowDefs = (
+  <defs>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur" />
+      <feMerge>
+        <feMergeNode in="coloredBlur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+);
+
+function SkeletonOverlay({ keypoints, width, height, videoWidth, videoHeight }) {
   if (!keypoints || keypoints.length === 0) return null;
 
   const scaleX = width / videoWidth;
@@ -20,15 +35,7 @@ export default function SkeletonOverlay({ keypoints, width, height, videoWidth, 
       height={height}
       className="absolute top-0 left-0 pointer-events-none"
     >
-      <defs>
-        <filter id="glow">
-          <feGaussianBlur stdDeviation="3" result="coloredBlur" />
-          <feMerge>
-            <feMergeNode in="coloredBlur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
+      {GlowDefs}
 
       <g filter="url(#glow)">
         {/* Connections */}
@@ -41,7 +48,7 @@ export default function SkeletonOverlay({ keypoints, width, height, videoWidth, 
               key={idx}
               x1={a.x} y1={a.y}
               x2={b.x} y2={b.y}
-              stroke="#b93a32"
+              stroke="var(--color-accent)"
               strokeWidth={3}
               strokeLinecap="round"
               opacity={Math.min(a.score, b.score)}
@@ -59,7 +66,7 @@ export default function SkeletonOverlay({ keypoints, width, height, videoWidth, 
               cx={kp.x}
               cy={kp.y}
               r={isMain ? 6 : 4}
-              fill="#b93a32"
+              fill="var(--color-accent)"
               opacity={kp.score}
               stroke="rgba(0,0,0,0.5)"
               strokeWidth={1}
@@ -70,3 +77,5 @@ export default function SkeletonOverlay({ keypoints, width, height, videoWidth, 
     </svg>
   );
 }
+
+export default memo(SkeletonOverlay);

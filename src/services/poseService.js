@@ -3,6 +3,7 @@ import '@tensorflow/tfjs-backend-webgl';
 import * as tf from '@tensorflow/tfjs-core';
 
 let detector = null;
+let warmedUp = false;
 
 export async function loadPoseDetector() {
   if (detector) return detector;
@@ -19,6 +20,20 @@ export async function loadPoseDetector() {
   );
 
   return detector;
+}
+
+// Compile WebGL shaders by running one inference on a blank input. Idempotent —
+// safe to call on every visitor; only the first call does work. Skipping this
+// on subsequent visitors prevents accumulating GPU tensor allocations across
+// the kiosk's all-day runtime.
+export async function warmUpDetector(d) {
+  if (warmedUp || !d) return;
+  const blank = document.createElement('canvas');
+  blank.width = 192; blank.height = 192;
+  try {
+    await d.estimatePoses(blank, { maxPoses: 1 });
+    warmedUp = true;
+  } catch (_) { /* warmup failure is non-fatal */ }
 }
 
 export async function detectPose(detector, video) {
