@@ -3,6 +3,7 @@ import LZString from 'lz-string';
 import useScanStore from '../../context/ScanContext';
 import BoothRoutine from './BoothRoutine';
 import { GOALS } from '../../utils/constants';
+import { BracketFrame } from '../UI/Telemetry';
 
 export default function RoutineViewer() {
   const [error, setError] = useState(null);
@@ -80,13 +81,25 @@ export default function RoutineViewer() {
   if (error) {
     return (
       <div className="min-h-[100dvh] flex items-center justify-center px-6 text-center bg-bg">
-        <div>
-          <div className="text-4xl mb-4">⚠</div>
-          <p className="text-text/60 text-sm max-w-xs mb-4 font-body">
+        <div className="relative max-w-xs px-8 py-10 border border-text/15 bg-text/[0.02]">
+          <BracketFrame size="md" color="accent" />
+          <div className="text-accent font-ui text-[10px] tracking-[0.5em] uppercase mb-4">
+            ▸ FAULT
+          </div>
+          <h2 className="font-heading text-3xl text-text leading-none mb-1">
+            CAN'T READ
+          </h2>
+          <h2 className="font-heading text-3xl text-accent leading-none mb-5">
+            THIS LINK.
+          </h2>
+          <p className="font-body text-text/60 text-sm mb-4">
             {error}
           </p>
-          <p className="text-text/20 text-[10px] font-ui">
-            data len: {(new URLSearchParams(window.location.search).get('r') || '').length}
+          <p className="font-ui text-text/20 text-[10px] tracking-[0.3em] uppercase">
+            data len /{' '}
+            <span className="tabular-nums text-text/40">
+              {(new URLSearchParams(window.location.search).get('r') || '').length}
+            </span>
           </p>
         </div>
       </div>
@@ -96,8 +109,13 @@ export default function RoutineViewer() {
   if (!ready) {
     return (
       <div className="min-h-[100dvh] flex items-center justify-center bg-bg">
-        <div className="text-text/40 text-xs tracking-[0.3em] uppercase font-ui">
-          Loading…
+        <div className="text-center">
+          <div className="text-accent font-ui text-[10px] tracking-[0.5em] uppercase mb-3">
+            ▸ DECODING
+          </div>
+          <div className="font-heading text-3xl text-text">
+            UNPACKING<span className="text-accent">…</span>
+          </div>
         </div>
       </div>
     );
