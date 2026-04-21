@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import useScanStore from '../../context/ScanContext';
 import { loadPoseDetector, detectPose, isFullBodyVisible, warmUpDetector } from '../../services/poseService';
 import { calculateBodyMetrics, classifyBodyType, classifyFrameSize, getProportionalNotes, calculateBMI, normalizeUserMeasurements } from '../../utils/bodyMetrics';
-import { STABILITY_THRESHOLD, STABILITY_FRAMES, STABILITY_DURATION, DETECTION_TIMEOUT, BODY_TYPES, SCAN_STATUS, ROUTES } from '../../utils/constants';
+import { STABILITY_THRESHOLD, STABILITY_FRAMES, STABILITY_DURATION, STABILITY_BAD_FRAME_TOLERANCE, DETECTION_TIMEOUT, BODY_TYPES, SCAN_STATUS, ROUTES } from '../../utils/constants';
 import { generateLocalRoutine } from '../../services/localRoutineGenerator';
 import SkeletonOverlay from './SkeletonOverlay';
 import SilhouetteGuide from './SilhouetteGuide';
@@ -45,6 +45,11 @@ export default function CameraView() {
   const animFrameRef = useRef(null);
   const stableStartRef = useRef(null);
   const prevKpsRef = useRef([]);
+  // Counter of consecutive frames where avgDelta exceeded STABILITY_THRESHOLD.
+  // We tolerate up to STABILITY_BAD_FRAME_TOLERANCE before breaking a HOLD,
+  // which absorbs single-frame detector jitter without letting real motion
+  // sneak through.
+  const badFrameCountRef = useRef(0);
   const detectorRef = useRef(null);
   const timeoutRef = useRef(null);
   const completedRef = useRef(false);
@@ -184,16 +189,23 @@ export default function CameraView() {
 
           const prevList = prevKpsRef.current;
           if (prevList.length >= STABILITY_FRAMES) {
-            const avgDelta = prevList.reduce((sum, prev) => {
-              const d = kps.reduce((s, kp, i) => {
-                const p = prev[i];
-                if (!p) return s;
-                return s + Math.abs(kp.x - p.x) + Math.abs(kp.y - p.y);
-              }, 0) / kps.length;
-              return sum + d;
-            }, 0) / prevList.length;
+            // Frame-to-frame delta: compare against the IMMEDIATE previous
+            // frame only. The earlier implementation averaged deltas against
+            // every frame in the buffer, which inflated avgDelta with
+            // accumulated detector noise over the window — so even when a
+            // visitor stood still, avgDelta consistently exceeded the
+            // threshold and stableStartRef was reset every frame, freezing
+            // holdProgress at ~0 forever.
+            const prev = prevList[prevList.length - 1];
+            const avgDelta = kps.reduce((s, kp, i) => {
+              const p = prev[i];
+              if (!p) return s;
+              return s + Math.abs(kp.x - p.x) + Math.abs(kp.y - p.y);
+            }, 0) / kps.length;
 
             if (avgDelta < STABILITY_THRESHOLD) {
+              // Good frame — reset jitter tolerance counter and accumulate hold.
+              badFrameCountRef.current = 0;
               if (!stableStartRef.current) {
                 stableStartRef.current = Date.now();
                 setScanStatus(SCAN_STATUS.HOLDING);
@@ -206,10 +218,16 @@ export default function CameraView() {
                 return;
               }
             } else {
-              stableStartRef.current = null;
-              setHoldProgressIfChanged(0);
-              const cs = useScanStore.getState().scanStatus;
-              if (cs === SCAN_STATUS.HOLDING) setScanStatus(SCAN_STATUS.DETECTED);
+              // Above-threshold frame. Don't immediately drop the hold —
+              // a single noisy frame from the detector shouldn't undo
+              // 2.5s of patient standing-still.
+              badFrameCountRef.current += 1;
+              if (badFrameCountRef.current >= STABILITY_BAD_FRAME_TOLERANCE) {
+                stableStartRef.current = null;
+                setHoldProgressIfChanged(0);
+                const cs = useScanStore.getState().scanStatus;
+                if (cs === SCAN_STATUS.HOLDING) setScanStatus(SCAN_STATUS.DETECTED);
+              }
             }
           }
 
@@ -218,6 +236,7 @@ export default function CameraView() {
           prevList.push(kps);
         } else {
           stableStartRef.current = null;
+          badFrameCountRef.current = 0;
           setHoldProgressIfChanged(0);
           if (prevKpsRef.current.length) prevKpsRef.current.length = 0;
           const cs = useScanStore.getState().scanStatus;
@@ -233,6 +252,7 @@ export default function CameraView() {
       } else {
         setCurrentKeypoints((prev) => (prev === null ? prev : null));
         stableStartRef.current = null;
+        badFrameCountRef.current = 0;
         setHoldProgressIfChanged(0);
         if (prevKpsRef.current.length) prevKpsRef.current.length = 0;
       }

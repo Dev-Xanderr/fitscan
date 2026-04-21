@@ -37,15 +37,21 @@ export const POSE_CONNECTIONS = [
   [12, 14], [14, 16], // right leg
 ];
 
-// Average per-keypoint pixel-delta below which we count a frame as "still".
-// Higher = more forgiving of breathing / micro-sway. Bumped from 5 → 8 after
-// kiosk feedback that scans were aborting on natural standing motion.
+// Per-keypoint pixel-delta (current frame vs previous frame) below which
+// we count a frame as "still". Frame-to-frame metric, NOT averaged across
+// a long buffer — the buffer-average version inflated deltas with
+// accumulated detector noise and made hold-lock effectively impossible.
 export const STABILITY_THRESHOLD = 8;
 export const STABILITY_DURATION = 3000;
-// Bumped 10 → 14: forces the rolling avg over a longer window so a single
-// twitchy frame doesn't pop the visitor out of HOLDING. Pairs with the
-// looser pixel threshold above.
-export const STABILITY_FRAMES = 14;
+// Number of prior frames we need before the stability check fires. With a
+// frame-to-frame metric we technically only need 1, but keep a small
+// warmup so the pose detector's first-frame jitter doesn't count.
+export const STABILITY_FRAMES = 3;
+// How many consecutive "bad" (above-threshold) frames we tolerate before
+// breaking a HOLD. At ~30fps this is ~130ms of noise tolerance — kills
+// flip-flop bouncing from single jitter spikes without letting the user
+// actually walk out of frame undetected.
+export const STABILITY_BAD_FRAME_TOLERANCE = 4;
 export const DETECTION_TIMEOUT = 60000;
 
 // ── Stringly-typed enum centralization ───────────────────────────────────────
