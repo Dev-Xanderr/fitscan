@@ -251,29 +251,27 @@ export default function BoothLanding() {
             </div>
           </div>
 
-          {/* 02 — TUNE IT (optional) */}
+          {/* 02 — TUNE IT (optional). Standard SectionLabel + single tight pill
+              button so the rail reads consistently with 01 and 03 and the
+              collapsed state isn't trying to be a header AND a button. */}
           <div className="space-y-4 mb-8">
+            <SectionLabel n="02" title="TUNE IT" />
+
             <button
               type="button"
               onClick={() => setTuneOpen((v) => !v)}
-              className="w-full text-left cursor-pointer group"
               aria-expanded={tuneOpen}
+              className="w-full flex items-center justify-between gap-3 px-4 py-3 border border-text/15 hover:border-text/40 hover:bg-text/[0.03] transition-all cursor-pointer group rounded-none"
             >
-              <div className="flex items-center gap-3 font-ui text-[10px] uppercase tracking-[0.4em] text-text/40 group-hover:text-text/70 transition-colors">
-                <span className="text-accent">02</span>
-                <span className="text-text/20">/</span>
-                <span>TUNE IT</span>
-                <span className="text-text/30 group-hover:text-text/60 normal-case tracking-wide text-[10px]">
-                  · optional
+              <span className="flex items-center gap-2 font-ui text-[11px] tracking-[0.25em] uppercase text-text/55 group-hover:text-text">
+                <span className="text-accent text-sm leading-none w-3 inline-block text-center">
+                  {tuneOpen ? '−' : '+'}
                 </span>
-                <span className="flex-1 h-px bg-text/10" />
-                <span className="text-accent text-[11px]">{tuneOpen ? '−' : '+'}</span>
-              </div>
-              {!tuneOpen && (
-                <p className="font-body text-text/40 text-xs mt-2 normal-case tracking-normal">
-                  Share age, height &amp; weight to dial the routine in tighter. Skip if you'd rather not.
-                </p>
-              )}
+                {tuneOpen ? 'HIDE' : 'AGE · HEIGHT · WEIGHT'}
+              </span>
+              <span className="font-ui text-[9px] tracking-[0.3em] uppercase text-text/30 group-hover:text-accent">
+                OPTIONAL
+              </span>
             </button>
 
             <AnimatePresence initial={false}>
@@ -286,7 +284,7 @@ export default function BoothLanding() {
                   transition={{ duration: 0.25, ease: 'easeOut' }}
                   className="overflow-hidden"
                 >
-                  <div className="space-y-4 pt-1">
+                  <div className="space-y-4 pt-2">
                     <ChipRow
                       label="AGE"
                       unit="YRS"
