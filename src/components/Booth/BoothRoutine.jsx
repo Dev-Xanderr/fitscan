@@ -90,73 +90,62 @@ export default function BoothRoutine({ phoneMode = false }) {
   // Modal close — stable callback so Esc handler and click handlers share one path.
   const closeDay = useCallback(() => setOpenDayIdx(null), []);
 
-  // Save-as-image wiring (phoneMode only). Captures the routine content as a
-  // PNG and hands it to the native share sheet on phones (which offers
-  // "Save to Photos"); falls back to a plain download on desktop browsers.
+  // Save-as-image wiring (phoneMode only).
+  //
+  // The visible phone page collapses each day to a 4-exercise preview for
+  // scroll-friendliness, so capturing the DOM as-is would produce a teaser,
+  // not a useful take-home. Instead we render a dedicated <RoutineExport>
+  // template off-screen with *every* exercise expanded (sets · reps · rest
+  // per line, plus warm-up and cool-down), capture that, and show the result
+  // in a "press and hold to save" modal.
+  //
+  // We don't use navigator.share() here. In testing it falls back to weak
+  // options like "Copy to Clipboard" on several browsers, and "Save to Photos"
+  // isn't reliable across iOS/Android/desktop. A visible image the user can
+  // long-press (or right-click on desktop) is bulletproof everywhere.
   const captureRef = useRef(null);
   const [capturing, setCapturing] = useState(false);
+  const [savedImage, setSavedImage] = useState(null); // { url, filename }
+
+  const closeSavedImage = useCallback(() => {
+    setSavedImage((prev) => {
+      if (prev?.url) URL.revokeObjectURL(prev.url);
+      return null;
+    });
+  }, []);
+
   const saveAsImage = useCallback(async () => {
     if (!captureRef.current || capturing) return;
     setCapturing(true);
     try {
-      // pixelRatio:2 → retina-sharp image. backgroundColor matches bg-bg so the
-      // capture isn't transparent (the page's dusk gradient lives on a -z-10
-      // sibling and isn't part of the captured node).
-      // The filter drops any node tagged data-no-capture so UI chrome like the
-      // save button itself doesn't end up in the saved image.
+      // pixelRatio:2 → retina-sharp PNG. backgroundColor matches bg-bg (#121212)
+      // so the capture isn't transparent — the visible page's dusk gradient
+      // lives on a -z-10 sibling and isn't part of the captured node.
       const blob = await toBlob(captureRef.current, {
         pixelRatio: 2,
         backgroundColor: '#121212',
         cacheBust: true,
-        filter: (node) =>
-          !(node instanceof HTMLElement) || node.dataset?.noCapture !== 'true',
       });
       if (!blob) throw new Error('Capture returned empty');
 
       const slug = (bodyType || 'routine').toString().toLowerCase().replace(/[^a-z0-9]+/g, '-');
       const filename = `squatwolf-routine-${slug}.png`;
-      const file = new File([blob], filename, { type: 'image/png' });
-
-      // Web Share API with files → opens the phone's native share sheet which
-      // has "Save Image" / "Save to Photos" built in. This is by far the best
-      // mobile UX — no download-prompts, no popup-blocked weirdness on Safari.
-      if (
-        typeof navigator !== 'undefined' &&
-        navigator.canShare &&
-        navigator.canShare({ files: [file] })
-      ) {
-        try {
-          await navigator.share({
-            files: [file],
-            title: 'My SQUATWOLF Routine',
-            text: 'Built at the booth.',
-          });
-          return;
-        } catch (err) {
-          // User dismissed the share sheet — not an error, just don't fall
-          // through to the download. Any other failure falls through.
-          if (err?.name === 'AbortError') return;
-          console.warn('Share failed, falling back to download:', err);
-        }
-      }
-
-      // Desktop / share-unsupported fallback: trigger a download via a
-      // disposable anchor. Revoke the object URL after a tick so the browser
-      // doesn't leak it.
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setSavedImage({ url, filename });
     } catch (err) {
       console.error('Could not save routine image:', err);
     } finally {
       setCapturing(false);
     }
   }, [bodyType, capturing]);
+
+  // Revoke any blob URL on unmount so we don't leak memory if the modal
+  // is still open when the user navigates away.
+  useEffect(() => {
+    return () => {
+      if (savedImage?.url) URL.revokeObjectURL(savedImage.url);
+    };
+  }, [savedImage]);
 
   // Esc-to-close + focus restoration. Capture the activeElement on open so
   // we can return focus to the day card that triggered the modal.
@@ -264,10 +253,7 @@ export default function BoothRoutine({ phoneMode = false }) {
 
       {!phoneMode && <TopBar stage="ROUTINE" />}
 
-      <main
-        ref={captureRef}
-        className={`${phoneMode ? 'px-4 py-8' : 'px-6 sm:px-10 lg:px-14 py-10'} flex-1 max-w-7xl mx-auto w-full`}
-      >
+      <main className={`${phoneMode ? 'px-4 py-8' : 'px-6 sm:px-10 lg:px-14 py-10'} flex-1 max-w-7xl mx-auto w-full`}>
         {/* HERO STRIP */}
         <motion.section
           initial={{ opacity: 0, y: 16 }}
@@ -445,13 +431,12 @@ export default function BoothRoutine({ phoneMode = false }) {
           </motion.div>
         )}
 
-        {/* Save-as-image — phone only. Marked data-no-capture so the button
-            itself isn't part of the saved PNG. The hint below doubles as the
-            "where does it go?" affordance — different phones land in different
-            apps (Photos, Files, share sheet), so we don't over-promise. */}
+        {/* Save-as-image — phone only. Opens a modal showing the captured
+            PNG with "press and hold" save instructions. The source image is
+            RoutineExport rendered off-screen (see below) with every exercise
+            expanded, not the collapsed day preview cards visible here. */}
         {phoneMode && (
           <motion.div
-            data-no-capture="true"
             className="mt-10 flex flex-col items-center gap-2"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -462,16 +447,53 @@ export default function BoothRoutine({ phoneMode = false }) {
               onClick={saveAsImage}
               disabled={capturing}
             >
-              {capturing ? 'SAVING…' : '▸ SAVE AS IMAGE'}
+              {capturing ? 'BUILDING…' : '▸ SAVE AS IMAGE'}
             </Button>
             <span className="font-ui text-[10px] tracking-[0.3em] uppercase text-text/30 text-center">
-              ▸ KEEP IT OFFLINE · WORKS AT THE GYM
+              ▸ FULL ROUTINE · OFFLINE AT THE GYM
             </span>
           </motion.div>
         )}
       </main>
 
       {!phoneMode && <BottomBar stage={3} tagline="▸ EARNED. NOT GUESSED." />}
+
+      {/* Off-screen export template — only rendered in phoneMode. Positioned
+          outside the viewport so it lays out properly (html-to-image needs a
+          real bounding box) but never shows to the visitor. This is what we
+          actually capture when they hit SAVE AS IMAGE. */}
+      {phoneMode && (
+        <div
+          aria-hidden="true"
+          style={{
+            position: 'absolute',
+            left: '-99999px',
+            top: 0,
+            pointerEvents: 'none',
+          }}
+        >
+          <div ref={captureRef}>
+            <RoutineExport
+              routine={routine}
+              bodyType={bodyType}
+              frameSize={frameSize}
+              goalLabel={goalLabel}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Saved-image modal — shows the captured PNG with a "press and hold"
+          hint so every platform has a clear path to Save. */}
+      <AnimatePresence>
+        {savedImage && (
+          <SavedImageModal
+            url={savedImage.url}
+            filename={savedImage.filename}
+            onClose={closeSavedImage}
+          />
+        )}
+      </AnimatePresence>
 
       {/* DAY DETAIL MODAL */}
       <AnimatePresence>
@@ -696,6 +718,332 @@ function QRCard({ leadCaptured, qrUrl }) {
         <span className={copy.chipColor}>{copy.chip}</span>
       </div>
     </div>
+  );
+}
+
+/**
+ * RoutineExport — the take-home image.
+ *
+ * Renders the full routine (hero stats + every day with all exercises,
+ * warm-up, cool-down) in a fixed-width vertical layout optimized for being
+ * saved as a phone photo. This is off-screen at all times; only the capture
+ * path ever sees it.
+ *
+ * Styling uses inline styles (not Tailwind classes) because html-to-image
+ * captures computed styles reliably, and we want this to render identically
+ * whether or not Tailwind's CSS has been applied yet. Inline also sidesteps
+ * CSS-variable resolution issues that occasionally break custom-property
+ * lookups during serialization.
+ */
+function RoutineExport({ routine, bodyType, frameSize, goalLabel }) {
+  const schedule = routine?.weeklySchedule || [];
+  const base = {
+    width: '720px',
+    background: '#121212',
+    color: '#fafafa',
+    fontFamily: 'Inter, system-ui, -apple-system, "Segoe UI", sans-serif',
+    padding: '40px',
+    boxSizing: 'border-box',
+  };
+  const accent = '#B93A32';
+  const dim = 'rgba(250,250,250,0.5)';
+  const faint = 'rgba(250,250,250,0.15)';
+  const card = 'rgba(250,250,250,0.035)';
+  const cardBorder = 'rgba(250,250,250,0.1)';
+  return (
+    <div style={base}>
+      {/* Brand strip */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          paddingBottom: '16px',
+          borderBottom: `1px solid ${faint}`,
+          marginBottom: '28px',
+        }}
+      >
+        <span
+          style={{
+            fontSize: '14px',
+            letterSpacing: '0.4em',
+            textTransform: 'uppercase',
+            fontWeight: 700,
+          }}
+        >
+          SQUATWOLF
+        </span>
+        <span
+          style={{
+            fontSize: '11px',
+            letterSpacing: '0.3em',
+            textTransform: 'uppercase',
+            color: accent,
+          }}
+        >
+          ROUTINE · EARNED
+        </span>
+      </div>
+
+      {/* Headline + hero stats */}
+      <div
+        style={{
+          fontSize: '54px',
+          fontWeight: 800,
+          lineHeight: 0.9,
+          letterSpacing: '-0.01em',
+          marginBottom: '6px',
+        }}
+      >
+        BUILT FOR <span style={{ color: accent }}>{goalLabel}</span>.
+      </div>
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(3, 1fr)',
+          gap: '20px',
+          marginTop: '24px',
+          marginBottom: '32px',
+          fontSize: '11px',
+          letterSpacing: '0.25em',
+          textTransform: 'uppercase',
+        }}
+      >
+        <div>
+          <div style={{ color: dim, marginBottom: '4px' }}>Body</div>
+          <div style={{ fontWeight: 600 }}>{bodyType || '—'}</div>
+        </div>
+        <div>
+          <div style={{ color: dim, marginBottom: '4px' }}>Frame</div>
+          <div style={{ fontWeight: 600 }}>{frameSize || '—'}</div>
+        </div>
+        <div>
+          <div style={{ color: dim, marginBottom: '4px' }}>Days</div>
+          <div style={{ color: accent, fontWeight: 600 }}>
+            {String(schedule.length).padStart(2, '0')}
+          </div>
+        </div>
+      </div>
+
+      {/* Per-day blocks with every exercise expanded */}
+      {schedule.map((day, i) => (
+        <div
+          key={i}
+          style={{
+            border: `1px solid ${cardBorder}`,
+            background: card,
+            padding: '18px 20px',
+            marginBottom: '14px',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: '14px', marginBottom: '12px' }}>
+            <span style={{ fontSize: '28px', fontWeight: 800, color: accent }}>
+              {String(i + 1).padStart(2, '0')}
+            </span>
+            <span style={{ fontSize: '22px', fontWeight: 700 }}>{day.day}</span>
+            <span
+              style={{
+                fontSize: '10px',
+                letterSpacing: '0.3em',
+                textTransform: 'uppercase',
+                color: accent,
+              }}
+            >
+              {day.focus}
+            </span>
+          </div>
+
+          {/* Warm-up */}
+          {day.warmup && day.warmup.length > 0 && (
+            <div style={{ marginBottom: '10px' }}>
+              <div
+                style={{
+                  fontSize: '9px',
+                  letterSpacing: '0.3em',
+                  textTransform: 'uppercase',
+                  color: dim,
+                  marginBottom: '4px',
+                }}
+              >
+                Warm-up
+              </div>
+              <div style={{ fontSize: '13px', color: 'rgba(250,250,250,0.75)' }}>
+                {day.warmup.map((w) => w.exercise || w).join(' · ')}
+              </div>
+            </div>
+          )}
+
+          {/* Exercises — one per row, with sets/reps/rest */}
+          <div>
+            {day.exercises.map((ex, ei) => (
+              <div
+                key={ei}
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: '24px 1fr auto',
+                  gap: '12px',
+                  padding: '8px 0',
+                  borderTop: ei === 0 ? 'none' : `1px solid ${faint}`,
+                  alignItems: 'baseline',
+                }}
+              >
+                <span style={{ fontSize: '12px', color: dim, fontWeight: 600 }}>
+                  {String(ei + 1).padStart(2, '0')}
+                </span>
+                <span style={{ fontSize: '14px', fontWeight: 500 }}>{ex.name}</span>
+                <span
+                  style={{
+                    fontSize: '11px',
+                    letterSpacing: '0.15em',
+                    textTransform: 'uppercase',
+                    color: 'rgba(250,250,250,0.7)',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  {[
+                    ex.sets && `${ex.sets}×${ex.reps || '—'}`,
+                    ex.rest && `rest ${ex.rest}`,
+                  ]
+                    .filter(Boolean)
+                    .join('  ·  ')}
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Cool-down */}
+          {day.cooldown && day.cooldown.length > 0 && (
+            <div style={{ marginTop: '12px' }}>
+              <div
+                style={{
+                  fontSize: '9px',
+                  letterSpacing: '0.3em',
+                  textTransform: 'uppercase',
+                  color: dim,
+                  marginBottom: '4px',
+                }}
+              >
+                Cool-down
+              </div>
+              <div style={{ fontSize: '13px', color: 'rgba(250,250,250,0.75)' }}>
+                {day.cooldown.map((c) => c.exercise || c).join(' · ')}
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+
+      {/* Footer */}
+      <div
+        style={{
+          marginTop: '28px',
+          paddingTop: '16px',
+          borderTop: `1px solid ${faint}`,
+          display: 'flex',
+          justifyContent: 'space-between',
+          fontSize: '10px',
+          letterSpacing: '0.3em',
+          textTransform: 'uppercase',
+          color: dim,
+        }}
+      >
+        <span>squatwolf.com</span>
+        <span style={{ color: accent }}>BORN IN DUBAI</span>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * SavedImageModal — shows the captured PNG with a "press and hold to save"
+ * instruction. Works identically on every platform:
+ *   • iOS Safari → long-press image → "Add to Photos"
+ *   • Android Chrome → long-press image → "Save image"
+ *   • Desktop → right-click, or hit the Download button in the footer
+ */
+function SavedImageModal({ url, filename, onClose }) {
+  // Esc-to-close for desktop keyboard users.
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+    >
+      <div
+        className="absolute inset-0 bg-black/90 backdrop-blur-sm"
+        onClick={onClose}
+        aria-hidden="true"
+      />
+
+      <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Saved routine image"
+        className="relative bg-bg border border-text/15 w-full max-w-md max-h-[92vh] overflow-y-auto rounded-none"
+        initial={{ scale: 0.94, y: 20 }}
+        animate={{ scale: 1, y: 0 }}
+        exit={{ scale: 0.94, y: 20 }}
+      >
+        <BracketFrame size="md" color="accent" />
+
+        <div className="px-5 py-4 border-b border-text/10 flex items-center justify-between">
+          <div>
+            <div className="font-ui text-[10px] tracking-[0.4em] uppercase text-accent">
+              ▸ READY
+            </div>
+            <div className="font-heading text-xl text-text leading-none mt-1">
+              SAVE TO PHOTOS
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="text-text/50 hover:text-text text-lg border border-text/10 hover:border-accent w-9 h-9 flex items-center justify-center transition-colors cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="px-5 py-4">
+          <div className="font-ui text-[10px] tracking-[0.3em] uppercase text-accent text-center mb-3">
+            ▸ PRESS AND HOLD THE IMAGE
+          </div>
+          <p className="font-body text-text/50 text-xs text-center mb-4 leading-relaxed">
+            Long-press and tap "Add to Photos" (iOS) or "Save image" (Android).
+            Works offline at the gym.
+          </p>
+
+          <div className="border border-text/10 bg-text/[0.02] p-2">
+            <img
+              src={url}
+              alt="Your routine"
+              className="w-full h-auto block select-auto"
+              // Let the native long-press / right-click menu do its thing.
+              draggable={false}
+            />
+          </div>
+
+          {/* Desktop / fallback — explicit download button so users who
+              don't know to right-click have a single obvious action. */}
+          <a
+            href={url}
+            download={filename}
+            className="mt-4 w-full flex items-center justify-center gap-2 border border-text/15 hover:border-accent hover:bg-accent/[0.06] px-4 py-3 font-ui text-[11px] tracking-[0.3em] uppercase text-text/70 hover:text-text transition-all cursor-pointer"
+          >
+            ▸ DOWNLOAD
+          </a>
+        </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
