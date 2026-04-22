@@ -13,6 +13,10 @@ import LeadCapture from '../Privacy/LeadCapture';
 
 const AUTO_RESET_SECONDS = 60;
 
+// QR v40 at error-correction level L tops out at 2,953 bytes of payload.
+// Above that, qrcode.react silently fails to encode, so we swap in a fallback.
+const MAX_QR_PAYLOAD = 2953;
+
 /**
  * BoothRoutine — stage 03 of the booth flow.
  *
@@ -27,16 +31,16 @@ const AUTO_RESET_SECONDS = 60;
  */
 export default function BoothRoutine({ phoneMode = false }) {
   const navigate = useNavigate();
-  const {
-    routine,
-    routineLoading,
-    routineError,
-    bodyType,
-    frameSize,
-    boothGoal,
-    leadCaptured,
-    reset,
-  } = useScanStore();
+  // Per-field selectors so unrelated store ticks (scanStatus, salt, etc.)
+  // don't re-render the routine page. Matches CameraView's pattern.
+  const routine = useScanStore((s) => s.routine);
+  const routineLoading = useScanStore((s) => s.routineLoading);
+  const routineError = useScanStore((s) => s.routineError);
+  const bodyType = useScanStore((s) => s.bodyType);
+  const frameSize = useScanStore((s) => s.frameSize);
+  const boothGoal = useScanStore((s) => s.boothGoal);
+  const leadCaptured = useScanStore((s) => s.leadCaptured);
+  const reset = useScanStore((s) => s.reset);
 
   const [secondsLeft, setSecondsLeft] = useState(AUTO_RESET_SECONDS);
   const [openDayIdx, setOpenDayIdx] = useState(null);
@@ -311,13 +315,11 @@ export default function BoothRoutine({ phoneMode = false }) {
             </div>
           </motion.div>
 
-          {/* 03 — TAKE IT WITH YOU (QR card, booth only).
-              The QR is gated behind lead capture — the routine itself is
-              fully visible (see section 02), but the take-home artifact
-              requires the visitor to drop their details. Frames the form
-              as a delivery mechanism rather than a marketing ask, and
-              materially bumps capture over the "parallel path" pattern.
-              Phone viewers (QR already scanned) never see this card. */}
+          {/* 03 — TAKE IT WITH YOU.
+              QR is gated behind lead capture — the routine itself stays
+              fully visible in section 02; only the take-home artifact is
+              locked. Frames the form as delivery, not marketing, which
+              materially out-converts the "parallel path" pattern. */}
           {!phoneMode && (
             <motion.aside
               initial={{ opacity: 0, x: 20 }}
@@ -326,78 +328,7 @@ export default function BoothRoutine({ phoneMode = false }) {
               className="space-y-4 lg:sticky lg:top-6"
             >
               <SectionLabel n="03" title="TAKE IT WITH YOU" />
-              <div className="relative bg-text text-bg p-7">
-                <BracketFrame size="md" color="accent" />
-                <div className="font-ui text-[10px] tracking-[0.4em] uppercase text-bg/60">
-                  {leadCaptured ? 'SCAN · TAKE HOME' : 'LOCKED · UNLOCK BELOW'}
-                </div>
-                <div className="font-heading text-3xl mt-2 mb-5 leading-none">
-                  {leadCaptured ? (
-                    <>
-                      YOUR PHONE
-                      <br />
-                      <span className="text-accent">YOUR PLAN.</span>
-                    </>
-                  ) : (
-                    <>
-                      LOCK IT
-                      <br />
-                      <span className="text-accent">TO KEEP IT.</span>
-                    </>
-                  )}
-                </div>
-
-                <AnimatePresence mode="wait">
-                  {leadCaptured ? (
-                    <motion.div
-                      key="qr"
-                      initial={{ opacity: 0, scale: 0.92 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.35, ease: 'easeOut' }}
-                    >
-                      {qrUrl && qrUrl.length <= 2953 ? (
-                        <div className="bg-text p-2 inline-block border border-bg/10">
-                          <QRCodeSVG
-                            value={qrUrl}
-                            size={228}
-                            bgColor="#FAFAFA"
-                            fgColor="#121212"
-                            level="L"
-                          />
-                        </div>
-                      ) : (
-                        <div className="bg-bg p-3 w-[228px] h-[228px] flex items-center justify-center text-text/50 text-xs text-center">
-                          Routine too large for QR
-                        </div>
-                      )}
-                    </motion.div>
-                  ) : (
-                    <motion.div
-                      key="locked"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <LockedQRPlaceholder />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
-                <p className="font-body text-bg/60 text-xs mt-5 max-w-[228px] leading-relaxed">
-                  {leadCaptured
-                    ? 'Open your camera, point at the code, and your full routine comes home with you.'
-                    : 'Enter your details below to unlock the QR. We\u2019ll email a copy too so it follows you home either way.'}
-                </p>
-
-                <div className="mt-5 pt-4 border-t border-bg/10 flex items-center justify-between font-ui text-[10px] tracking-[0.3em] uppercase">
-                  <span className="text-bg/50">squatwolf.com</span>
-                  <span className={leadCaptured ? 'text-accent' : 'text-bg/40'}>
-                    {leadCaptured ? '\u25b8 READY' : '\u25b8 LOCKED'}
-                  </span>
-                </div>
-              </div>
+              <QRCard leadCaptured={leadCaptured} qrUrl={qrUrl} />
             </motion.aside>
           )}
         </div>
@@ -614,30 +545,107 @@ export default function BoothRoutine({ phoneMode = false }) {
   );
 }
 
-/**
- * Placeholder shown in place of the QR while the visitor hasn't dropped
- * their details yet. Same 228px footprint as the real QR so the card
- * doesn't reflow when the unlock animation runs.
- *
- * Visual language: diagonal racing-stripe chevron motif (matches the
- * scanner HUD) + a chunky lock glyph + a "UNLOCK BELOW" chevron pointing
- * the visitor's eye toward the form.
- */
+// Two states of the take-home card — collected here so the JSX stays a single
+// templated render rather than five parallel ternaries on the same boolean.
+const QR_CARD_COPY = {
+  unlocked: {
+    eyebrow: 'SCAN · TAKE HOME',
+    headline: 'YOUR PHONE',
+    headlineAccent: 'YOUR PLAN.',
+    caption:
+      'Open your camera, point at the code, and your full routine comes home with you.',
+    chip: '▸ READY',
+    chipColor: 'text-accent',
+  },
+  locked: {
+    eyebrow: 'LOCKED · UNLOCK BELOW',
+    headline: 'LOCK IT',
+    headlineAccent: 'TO KEEP IT.',
+    caption:
+      "Enter your details below to unlock the QR. We'll email a copy too so it follows you home either way.",
+    chip: '▸ LOCKED',
+    chipColor: 'text-bg/40',
+  },
+};
+
+function QRCard({ leadCaptured, qrUrl }) {
+  const copy = leadCaptured ? QR_CARD_COPY.unlocked : QR_CARD_COPY.locked;
+  return (
+    <div className="relative bg-text text-bg p-7">
+      <BracketFrame size="md" color="accent" />
+      <div className="font-ui text-[10px] tracking-[0.4em] uppercase text-bg/60">
+        {copy.eyebrow}
+      </div>
+      <div className="font-heading text-3xl mt-2 mb-5 leading-none">
+        {copy.headline}
+        <br />
+        <span className="text-accent">{copy.headlineAccent}</span>
+      </div>
+
+      <AnimatePresence mode="wait">
+        {leadCaptured ? (
+          <motion.div
+            key="qr"
+            initial={{ opacity: 0, scale: 0.92 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.35, ease: 'easeOut' }}
+          >
+            {qrUrl && qrUrl.length <= MAX_QR_PAYLOAD ? (
+              <div className="bg-text p-2 inline-block border border-bg/10">
+                <QRCodeSVG
+                  value={qrUrl}
+                  size={228}
+                  bgColor="#FAFAFA"
+                  fgColor="#121212"
+                  level="L"
+                />
+              </div>
+            ) : (
+              <div className="bg-bg p-3 w-[228px] h-[228px] flex items-center justify-center text-text/50 text-xs text-center">
+                Routine too large for QR
+              </div>
+            )}
+          </motion.div>
+        ) : (
+          <motion.div
+            key="locked"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <LockedQRPlaceholder />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <p className="font-body text-bg/60 text-xs mt-5 max-w-[228px] leading-relaxed">
+        {copy.caption}
+      </p>
+
+      <div className="mt-5 pt-4 border-t border-bg/10 flex items-center justify-between font-ui text-[10px] tracking-[0.3em] uppercase">
+        <span className="text-bg/50">squatwolf.com</span>
+        <span className={copy.chipColor}>{copy.chip}</span>
+      </div>
+    </div>
+  );
+}
+
+// Same 228px footprint as the real QR so the card doesn't reflow on unlock.
 function LockedQRPlaceholder() {
   return (
     <div className="relative w-[228px] h-[228px] bg-bg text-text overflow-hidden flex flex-col items-center justify-center gap-3 border border-bg/10">
-      {/* Chevron racing stripes across the whole placeholder */}
       <div
         className="absolute inset-0 diagonal-stripes opacity-30 pointer-events-none"
         aria-hidden="true"
       />
-      {/* Corner tick marks so it matches the telemetry aesthetic */}
       <div className="absolute top-2 left-2 w-3 h-3 border-l-2 border-t-2 border-accent pointer-events-none" aria-hidden="true" />
       <div className="absolute top-2 right-2 w-3 h-3 border-r-2 border-t-2 border-accent pointer-events-none" aria-hidden="true" />
       <div className="absolute bottom-2 left-2 w-3 h-3 border-l-2 border-b-2 border-accent pointer-events-none" aria-hidden="true" />
       <div className="absolute bottom-2 right-2 w-3 h-3 border-r-2 border-b-2 border-accent pointer-events-none" aria-hidden="true" />
 
-      {/* Lock glyph — hand-drawn to avoid another dependency */}
+      {/* Inline SVG to avoid pulling in an icon library for one glyph. */}
       <svg
         viewBox="0 0 24 24"
         className="w-14 h-14 text-accent relative z-10"
