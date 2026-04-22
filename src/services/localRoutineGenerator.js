@@ -26,6 +26,14 @@ const EXERCISES = {
     { name: 'Cable Crossovers', equipment: ['full-gym'], level: ['intermediate', 'advanced'], primary: 'chest', secondary: [], compound: false },
     { name: 'Incline Push-Ups', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate'], primary: 'chest', secondary: ['shoulders'], compound: true },
     { name: 'Archer Push-Ups', equipment: ['bodyweight', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'chest', secondary: ['triceps'], compound: true },
+    { name: 'Spoto Press', equipment: ['full-gym'], level: ['intermediate', 'advanced'], primary: 'chest', secondary: ['triceps'], compound: true },
+    { name: 'Larsen Press', equipment: ['full-gym'], level: ['intermediate', 'advanced'], primary: 'chest', secondary: ['triceps', 'core'], compound: true },
+    { name: 'Single-Arm Dumbbell Bench Press', equipment: ['dumbbells', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'chest', secondary: ['core', 'triceps'], compound: true },
+    { name: 'Wide-Grip Push-Ups', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'chest', secondary: ['shoulders'], compound: true },
+    { name: 'Deficit Push-Ups', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'chest', secondary: ['shoulders'], compound: true },
+    { name: 'Ring Push-Ups', equipment: ['home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'chest', secondary: ['core', 'shoulders'], compound: true },
+    { name: 'Low-to-High Cable Fly', equipment: ['full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'chest', secondary: [], compound: false },
+    { name: 'Hex Press', equipment: ['dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'chest', secondary: ['triceps'], compound: false },
   ],
 
   // ---- BACK ----
@@ -49,6 +57,15 @@ const EXERCISES = {
     { name: 'Neutral-Grip Pull-Ups', equipment: ['home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'back', secondary: ['biceps'], compound: true },
     { name: 'Rack Pulls', equipment: ['full-gym'], level: ['intermediate', 'advanced'], primary: 'back', secondary: ['glutes'], compound: true },
     { name: 'Kroc Rows', equipment: ['dumbbells', 'full-gym'], level: ['advanced'], primary: 'back', secondary: ['biceps'], compound: true },
+    { name: 'Pendlay Row', equipment: ['full-gym'], level: ['intermediate', 'advanced'], primary: 'back', secondary: ['biceps'], compound: true },
+    { name: 'Seal Row', equipment: ['full-gym'], level: ['intermediate', 'advanced'], primary: 'back', secondary: ['biceps'], compound: true },
+    { name: 'Yates Row', equipment: ['full-gym'], level: ['intermediate', 'advanced'], primary: 'back', secondary: ['biceps'], compound: true },
+    { name: 'Single-Arm Lat Pulldown', equipment: ['full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'back', secondary: ['biceps'], compound: true },
+    { name: 'Half-Kneeling Cable Pulldown', equipment: ['full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'back', secondary: ['core'], compound: true },
+    { name: 'Cable Rope Pullover', equipment: ['full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'back', secondary: [], compound: false },
+    { name: 'Snatch-Grip Deadlift', equipment: ['full-gym'], level: ['advanced'], primary: 'back', secondary: ['hamstrings', 'glutes'], compound: true },
+    { name: 'Gorilla Rows', equipment: ['dumbbells', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'back', secondary: ['core'], compound: true },
+    { name: 'Band Pull-Aparts', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'back', secondary: ['shoulders'], compound: false },
   ],
 
   // ---- SHOULDERS ----
@@ -68,6 +85,16 @@ const EXERCISES = {
     { name: 'Landmine Shoulder Press', equipment: ['full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'shoulders', secondary: ['triceps'], compound: true },
     { name: 'Plate Front Raises', equipment: ['full-gym'], level: ['beginner', 'intermediate'], primary: 'shoulders', secondary: [], compound: false },
     { name: 'Seated Dumbbell Press', equipment: ['dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'shoulders', secondary: ['triceps'], compound: true },
+    { name: 'Z-Press', equipment: ['dumbbells', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'shoulders', secondary: ['core', 'triceps'], compound: true },
+    { name: 'Half-Kneeling Landmine Press', equipment: ['full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'shoulders', secondary: ['core'], compound: true },
+    { name: 'Cuban Press', equipment: ['dumbbells', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'shoulders', secondary: ['back'], compound: false },
+    { name: 'Bradford Press', equipment: ['full-gym'], level: ['intermediate', 'advanced'], primary: 'shoulders', secondary: ['triceps'], compound: true },
+    { name: 'Bottoms-Up Kettlebell Press', equipment: ['home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'shoulders', secondary: ['core', 'forearms'], compound: true },
+    { name: 'Landmine Lateral Raise', equipment: ['full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'shoulders', secondary: [], compound: false },
+    { name: 'Prone Y-T-W Raises', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate'], primary: 'shoulders', secondary: ['back'], compound: false },
+    { name: 'Incline Y-Raise', equipment: ['dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'shoulders', secondary: [], compound: false },
+    { name: 'Banded Lateral Raises', equipment: ['bodyweight', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'shoulders', secondary: [], compound: false },
+    { name: 'Cable Y-Raise', equipment: ['full-gym'], level: ['intermediate', 'advanced'], primary: 'shoulders', secondary: ['back'], compound: false },
   ],
 
   // ---- BICEPS ----
@@ -82,6 +109,13 @@ const EXERCISES = {
     { name: 'Spider Curls', equipment: ['dumbbells', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'biceps', secondary: [], compound: false },
     { name: 'EZ Bar Curls', equipment: ['full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'biceps', secondary: [], compound: false },
     { name: 'Zottman Curls', equipment: ['dumbbells', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'biceps', secondary: ['forearms'], compound: false },
+    { name: 'Bayesian Cable Curls', equipment: ['full-gym'], level: ['intermediate', 'advanced'], primary: 'biceps', secondary: [], compound: false },
+    { name: '21s (Barbell)', equipment: ['full-gym'], level: ['intermediate', 'advanced'], primary: 'biceps', secondary: [], compound: false },
+    { name: 'Drag Curls', equipment: ['full-gym'], level: ['intermediate', 'advanced'], primary: 'biceps', secondary: [], compound: false },
+    { name: 'Reverse Curls', equipment: ['dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'biceps', secondary: ['forearms'], compound: false },
+    { name: 'Cross-Body Hammer Curls', equipment: ['dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'biceps', secondary: ['forearms'], compound: false },
+    { name: 'Cable Hammer Curls', equipment: ['full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'biceps', secondary: ['forearms'], compound: false },
+    { name: 'Resistance Band Curls', equipment: ['bodyweight', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate'], primary: 'biceps', secondary: [], compound: false },
   ],
 
   // ---- TRICEPS ----
@@ -97,6 +131,12 @@ const EXERCISES = {
     { name: 'Single-Arm Cable Pushdown', equipment: ['full-gym'], level: ['intermediate', 'advanced'], primary: 'triceps', secondary: [], compound: false },
     { name: 'JM Press', equipment: ['full-gym'], level: ['advanced'], primary: 'triceps', secondary: ['chest'], compound: true },
     { name: 'Tate Press', equipment: ['dumbbells', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'triceps', secondary: [], compound: false },
+    { name: 'French Press (Seated)', equipment: ['dumbbells', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'triceps', secondary: [], compound: false },
+    { name: 'Cable Overhead Rope Extension', equipment: ['full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'triceps', secondary: [], compound: false },
+    { name: 'Reverse-Grip Tricep Pushdown', equipment: ['full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'triceps', secondary: [], compound: false },
+    { name: 'Plate-Squeeze Press', equipment: ['dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate'], primary: 'triceps', secondary: ['chest'], compound: false },
+    { name: 'Board Press', equipment: ['full-gym'], level: ['advanced'], primary: 'triceps', secondary: ['chest'], compound: true },
+    { name: 'California Press', equipment: ['dumbbells', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'triceps', secondary: ['chest'], compound: true },
   ],
 
   // ---- QUADS ----
@@ -118,6 +158,14 @@ const EXERCISES = {
     { name: 'Box Squats', equipment: ['full-gym'], level: ['intermediate', 'advanced'], primary: 'quads', secondary: ['glutes'], compound: true },
     { name: 'Belt Squats', equipment: ['full-gym'], level: ['intermediate', 'advanced'], primary: 'quads', secondary: ['glutes'], compound: true },
     { name: 'Jump Squats', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'quads', secondary: ['glutes'], compound: true },
+    { name: 'Cossack Squats', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'quads', secondary: ['glutes'], compound: true },
+    { name: 'Cyclist Squat', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'quads', secondary: [], compound: true },
+    { name: 'Zercher Squat', equipment: ['full-gym'], level: ['advanced'], primary: 'quads', secondary: ['core', 'glutes'], compound: true },
+    { name: 'Single-Leg Leg Press', equipment: ['full-gym'], level: ['intermediate', 'advanced'], primary: 'quads', secondary: ['glutes'], compound: true },
+    { name: 'Spanish Squat', equipment: ['home-gym', 'full-gym'], level: ['beginner', 'intermediate'], primary: 'quads', secondary: [], compound: false },
+    { name: 'Landmine Squat', equipment: ['full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'quads', secondary: ['glutes'], compound: true },
+    { name: 'Wall Sit', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate'], primary: 'quads', secondary: [], compound: false },
+    { name: 'Sumo Goblet Squat', equipment: ['dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate'], primary: 'quads', secondary: ['glutes'], compound: true },
   ],
 
   // ---- HAMSTRINGS ----
@@ -133,6 +181,12 @@ const EXERCISES = {
     { name: 'Seated Leg Curl', equipment: ['full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'hamstrings', secondary: [], compound: false },
     { name: 'Deficit Deadlift', equipment: ['full-gym'], level: ['advanced'], primary: 'hamstrings', secondary: ['back', 'glutes'], compound: true },
     { name: 'Kettlebell Swings', equipment: ['home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'hamstrings', secondary: ['glutes'], compound: true },
+    { name: 'Stiff-Leg Deadlift', equipment: ['dumbbells', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'hamstrings', secondary: ['glutes', 'back'], compound: true },
+    { name: 'Single-Leg Good Morning', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'hamstrings', secondary: ['glutes', 'core'], compound: true },
+    { name: 'Slider Leg Curls', equipment: ['bodyweight', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'hamstrings', secondary: ['glutes'], compound: false },
+    { name: 'Banded Hamstring Curl', equipment: ['bodyweight', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate'], primary: 'hamstrings', secondary: [], compound: false },
+    { name: 'Dumbbell Prone Hamstring Curl', equipment: ['dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'hamstrings', secondary: [], compound: false },
+    { name: 'Trap-Bar Deadlift', equipment: ['full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'hamstrings', secondary: ['glutes', 'quads', 'back'], compound: true },
   ],
 
   // ---- GLUTES ----
@@ -148,6 +202,18 @@ const EXERCISES = {
     { name: 'Curtsy Lunges', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate'], primary: 'glutes', secondary: ['quads'], compound: true },
     { name: 'Frog Pumps', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate'], primary: 'glutes', secondary: [], compound: false },
     { name: 'Step-Through Lunges', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'glutes', secondary: ['quads'], compound: true },
+    { name: 'Barbell Hip Thrust', equipment: ['full-gym'], level: ['intermediate', 'advanced'], primary: 'glutes', secondary: ['hamstrings'], compound: true },
+    { name: 'Single-Leg Hip Thrust', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'glutes', secondary: ['hamstrings'], compound: true },
+    { name: 'Donkey Kicks', equipment: ['bodyweight', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate'], primary: 'glutes', secondary: [], compound: false },
+    { name: 'Fire Hydrants', equipment: ['bodyweight', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate'], primary: 'glutes', secondary: [], compound: false },
+    { name: 'Weighted Clamshells', equipment: ['home-gym', 'full-gym'], level: ['beginner', 'intermediate'], primary: 'glutes', secondary: [], compound: false },
+    { name: 'Hip Abduction Machine', equipment: ['full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'glutes', secondary: [], compound: false },
+    { name: 'Reverse Hyperextension', equipment: ['full-gym'], level: ['intermediate', 'advanced'], primary: 'glutes', secondary: ['hamstrings', 'back'], compound: true },
+    { name: '45° Back Extension (Glute-Led)', equipment: ['full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'glutes', secondary: ['hamstrings'], compound: true },
+    { name: 'Kas Glute Bridge', equipment: ['dumbbells', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'glutes', secondary: [], compound: false },
+    { name: 'Sumo Squat', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'glutes', secondary: ['quads'], compound: true },
+    { name: 'Cable Glute Kickback', equipment: ['full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'glutes', secondary: [], compound: false },
+    { name: 'Walking Kettlebell Swing', equipment: ['home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'glutes', secondary: ['hamstrings', 'conditioning'], compound: true },
   ],
 
   // ---- CALVES ----
@@ -158,6 +224,10 @@ const EXERCISES = {
     { name: 'Donkey Calf Raises', equipment: ['full-gym'], level: ['intermediate', 'advanced'], primary: 'calves', secondary: [], compound: false },
     { name: 'Leg Press Calf Raises', equipment: ['full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'calves', secondary: [], compound: false },
     { name: 'Jump Rope', equipment: ['bodyweight', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'calves', secondary: [], compound: false },
+    { name: 'Tibialis Raises', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'calves', secondary: [], compound: false },
+    { name: 'Farmer Walk on Toes', equipment: ['dumbbells', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'calves', secondary: ['core'], compound: true },
+    { name: 'Smith Machine Calf Raise', equipment: ['full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'calves', secondary: [], compound: false },
+    { name: 'Deficit Calf Raise', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'calves', secondary: [], compound: false },
   ],
 
   // ---- CORE ----
@@ -182,6 +252,14 @@ const EXERCISES = {
     { name: 'Turkish Get-Up', equipment: ['dumbbells', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'core', secondary: ['shoulders', 'glutes'], compound: true },
     { name: 'Suitcase Carry', equipment: ['dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'core', secondary: ['traps'], compound: true },
     { name: 'Overhead Carry', equipment: ['dumbbells', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'core', secondary: ['shoulders'], compound: true },
+    { name: 'Copenhagen Plank', equipment: ['bodyweight', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'core', secondary: ['glutes'], compound: false },
+    { name: 'L-Sit Hold', equipment: ['bodyweight', 'home-gym', 'full-gym'], level: ['advanced'], primary: 'core', secondary: [], compound: false },
+    { name: 'Hanging Knee Raises', equipment: ['home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'core', secondary: [], compound: false },
+    { name: 'GHD Sit-Ups', equipment: ['full-gym'], level: ['intermediate', 'advanced'], primary: 'core', secondary: [], compound: false },
+    { name: 'Side Plank with Hip Drop', equipment: ['bodyweight', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'core', secondary: [], compound: false },
+    { name: 'Dumbbell Woodchop', equipment: ['dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'core', secondary: ['shoulders'], compound: false },
+    { name: 'Landmine Rotations', equipment: ['full-gym'], level: ['intermediate', 'advanced'], primary: 'core', secondary: ['shoulders'], compound: false },
+    { name: 'Windshield Wipers', equipment: ['bodyweight', 'home-gym', 'full-gym'], level: ['advanced'], primary: 'core', secondary: [], compound: false },
   ],
 
   // ---- CONDITIONING (cardio / metabolic / Hyrox / CrossFit) ----
@@ -227,6 +305,68 @@ const EXERCISES = {
     // Jump rope variations
     { name: 'Jump Rope — Double Unders', equipment: ['bodyweight', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'conditioning', secondary: ['calves'], compound: true, modality: 'cardio' },
     { name: 'Jump Rope — High Knees', equipment: ['bodyweight', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'conditioning', secondary: ['calves', 'core'], compound: true, modality: 'cardio' },
+    // Hyrox station-specific
+    { name: 'Sled Push Sprint (25m)', equipment: ['full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'conditioning', secondary: ['quads', 'glutes'], compound: true, modality: 'metabolic' },
+    { name: 'Sled Drag Backwards', equipment: ['full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'conditioning', secondary: ['quads'], compound: true, modality: 'metabolic' },
+    { name: 'Compromised Run (Row + Run)', equipment: ['full-gym'], level: ['intermediate', 'advanced'], primary: 'conditioning', secondary: ['back', 'quads'], compound: true, modality: 'cardio' },
+    { name: 'Farmer Carry Medley', equipment: ['dumbbells', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'conditioning', secondary: ['core', 'traps'], compound: true, modality: 'metabolic' },
+    { name: 'Sandbag Over-Shoulder', equipment: ['full-gym', 'home-gym'], level: ['intermediate', 'advanced'], primary: 'conditioning', secondary: ['back', 'glutes'], compound: true, modality: 'power' },
+    { name: 'Wall Ball to Burpee', equipment: ['full-gym', 'home-gym'], level: ['intermediate', 'advanced'], primary: 'conditioning', secondary: ['quads', 'chest', 'shoulders'], compound: true, modality: 'metabolic' },
+    { name: 'SkiErg Sprint (100m)', equipment: ['full-gym'], level: ['intermediate', 'advanced'], primary: 'conditioning', secondary: ['back', 'shoulders'], compound: true, modality: 'cardio' },
+    { name: 'Hyrox Burpee Broad Jump', equipment: ['bodyweight', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'conditioning', secondary: ['quads', 'chest'], compound: true, modality: 'plyometric' },
+    // Plyometric box variations
+    { name: 'Depth Jumps', equipment: ['home-gym', 'full-gym'], level: ['advanced'], primary: 'conditioning', secondary: ['quads', 'glutes'], compound: true, modality: 'plyometric' },
+    { name: 'Lateral Box Jumps', equipment: ['home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'conditioning', secondary: ['quads', 'glutes'], compound: true, modality: 'plyometric' },
+    { name: 'Single-Leg Box Jumps', equipment: ['home-gym', 'full-gym'], level: ['advanced'], primary: 'conditioning', secondary: ['quads', 'glutes'], compound: true, modality: 'plyometric' },
+    { name: 'Box Jump Step-Downs', equipment: ['home-gym', 'full-gym'], level: ['beginner', 'intermediate'], primary: 'conditioning', secondary: ['quads', 'glutes'], compound: true, modality: 'plyometric' },
+    { name: 'Seated Box Jumps', equipment: ['home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'conditioning', secondary: ['quads', 'glutes'], compound: true, modality: 'power' },
+    { name: 'Tuck Jumps', equipment: ['bodyweight', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'conditioning', secondary: ['quads'], compound: true, modality: 'plyometric' },
+    { name: 'Hurdle Hops', equipment: ['home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'conditioning', secondary: ['calves', 'quads'], compound: true, modality: 'plyometric' },
+    { name: 'Skater Jumps', equipment: ['bodyweight', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'conditioning', secondary: ['glutes', 'quads'], compound: true, modality: 'plyometric' },
+    { name: 'Clapping Push-Ups', equipment: ['bodyweight', 'home-gym', 'full-gym'], level: ['advanced'], primary: 'conditioning', secondary: ['chest', 'triceps'], compound: true, modality: 'plyometric' },
+    { name: 'Plyo Push-Ups', equipment: ['bodyweight', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'conditioning', secondary: ['chest', 'triceps'], compound: true, modality: 'plyometric' },
+    // Cross-training / CrossFit complexes
+    { name: 'Echo Bike Sprints', equipment: ['full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'conditioning', secondary: ['quads'], compound: true, modality: 'cardio' },
+    { name: 'Turkish Get-Up Complex', equipment: ['dumbbells', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'conditioning', secondary: ['shoulders', 'core'], compound: true, modality: 'power' },
+    { name: 'Clean + Front Squat + Press Complex', equipment: ['full-gym'], level: ['intermediate', 'advanced'], primary: 'conditioning', secondary: ['quads', 'shoulders', 'back'], compound: true, modality: 'power' },
+    { name: 'Bear Complex', equipment: ['dumbbells', 'full-gym'], level: ['advanced'], primary: 'conditioning', secondary: ['quads', 'shoulders', 'back'], compound: true, modality: 'power' },
+    { name: 'Double-KB Front Rack Carry', equipment: ['home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'conditioning', secondary: ['core', 'shoulders'], compound: true, modality: 'metabolic' },
+    { name: 'Zercher Carry', equipment: ['full-gym'], level: ['intermediate', 'advanced'], primary: 'conditioning', secondary: ['core', 'quads'], compound: true, modality: 'metabolic' },
+    { name: 'Yoke Walk', equipment: ['full-gym'], level: ['advanced'], primary: 'conditioning', secondary: ['core', 'back', 'quads'], compound: true, modality: 'metabolic' },
+    { name: 'Atlas Stone Lift', equipment: ['full-gym'], level: ['advanced'], primary: 'conditioning', secondary: ['back', 'glutes', 'biceps'], compound: true, modality: 'power' },
+    { name: 'Shuttle Runs', equipment: ['bodyweight', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'conditioning', secondary: ['quads'], compound: true, modality: 'cardio' },
+    // Bodyweight cardio extras
+    { name: 'Star Jumps', equipment: ['bodyweight', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'conditioning', secondary: ['quads'], compound: true, modality: 'cardio' },
+    { name: 'High Knees Sprint', equipment: ['bodyweight', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'conditioning', secondary: ['core', 'quads'], compound: true, modality: 'cardio' },
+    { name: 'Sprawls', equipment: ['bodyweight', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'conditioning', secondary: ['chest', 'core'], compound: true, modality: 'metabolic' },
+    { name: 'Crab Walks', equipment: ['bodyweight', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate'], primary: 'conditioning', secondary: ['shoulders', 'glutes'], compound: true, modality: 'metabolic' },
+  ],
+
+  // ---- MOBILITY (flexibility + power yoga) ----
+  // Output is time/flow-based, not reps. Used as yoga-flavored finishers and
+  // sprinkled throughout the week for visitors who pick athletic/stay-active.
+  mobility: [
+    // Flexibility — targeted joint range work
+    { name: "World's Greatest Stretch", equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'mobility', secondary: ['core'], compound: false, modality: 'flexibility' },
+    { name: '90/90 Hip Switches', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'mobility', secondary: [], compound: false, modality: 'flexibility' },
+    { name: 'Thoracic Open Books', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'mobility', secondary: [], compound: false, modality: 'flexibility' },
+    { name: 'Wall Slides', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'mobility', secondary: ['shoulders'], compound: false, modality: 'flexibility' },
+    { name: 'Couch Stretch', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'mobility', secondary: [], compound: false, modality: 'flexibility' },
+    { name: 'Jefferson Curl (Light Load)', equipment: ['dumbbells', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'mobility', secondary: ['back'], compound: false, modality: 'flexibility' },
+    { name: 'Cossack Squat Flow', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'mobility', secondary: [], compound: false, modality: 'flexibility' },
+    { name: 'Deep Squat Hold (Malasana)', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'mobility', secondary: [], compound: false, modality: 'flexibility' },
+    { name: 'Pancake Stretch', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'mobility', secondary: [], compound: false, modality: 'flexibility' },
+    // Power yoga — dynamic flows
+    { name: 'Sun Salutation A Flow', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'mobility', secondary: [], compound: false, modality: 'yoga' },
+    { name: 'Sun Salutation B Flow', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'mobility', secondary: [], compound: false, modality: 'yoga' },
+    { name: 'Warrior I-II-III Flow', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'mobility', secondary: ['core'], compound: false, modality: 'yoga' },
+    { name: 'Chaturanga Flow', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'mobility', secondary: ['chest', 'core'], compound: false, modality: 'yoga' },
+    { name: 'Crow Pose Progression', equipment: ['bodyweight', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'mobility', secondary: ['core', 'shoulders'], compound: false, modality: 'yoga' },
+    { name: 'Pigeon Flow', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'mobility', secondary: [], compound: false, modality: 'yoga' },
+    { name: 'Half Moon Pose', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'mobility', secondary: ['core'], compound: false, modality: 'yoga' },
+    { name: 'Boat Pose Hold', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'mobility', secondary: ['core'], compound: false, modality: 'yoga' },
+    { name: 'Revolved Triangle', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['intermediate', 'advanced'], primary: 'mobility', secondary: [], compound: false, modality: 'yoga' },
+    { name: 'Dynamic Downward Dog Flow', equipment: ['bodyweight', 'dumbbells', 'home-gym', 'full-gym'], level: ['beginner', 'intermediate', 'advanced'], primary: 'mobility', secondary: ['shoulders'], compound: false, modality: 'yoga' },
   ],
 };
 
@@ -775,13 +915,99 @@ function getAvailableExercises(muscleGroup, equipment, level) {
 }
 
 /**
- * Deterministically pick exercises for a muscle group, respecting priority
- * bias and avoiding duplicates within a workout day.
+ * Classifies an exercise name into a movement pattern so the selector can
+ * avoid stacking redundant variants in one day (e.g. Bench Press + Incline
+ * Bench Press + Decline DB Press — all horizontal presses).
+ *
+ * Returns null for anything unclassified (rare accessory or mobility items),
+ * which means no within-day penalty applies to it.
  */
-function selectExercises(muscleGroup, count, equipment, level, usedNames, priorityBias, goalBias = {}, bodyBias = {}, seed = 0.5) {
+export function patternOf(name) {
+  const n = name.toLowerCase();
+  const hasPress = /\bpress\b/.test(n);
+
+  // Isolation patterns — specific first so they don't get swallowed by general regex.
+  // Order matters: leg-curl and hamstring-curl must win against the generic curl check.
+  if (/lateral raise/.test(n)) return 'lateral-raise';
+  if (/front raise|y-raise/.test(n)) return 'front-raise';
+  if (/reverse fly|rear delt|face pull/.test(n)) return 'rear-delt';
+  if (/fl(y|ies)\b|crossover|pec deck/.test(n)) return 'fly';
+  if (/leg extension/.test(n)) return 'leg-extension';
+  if (/leg curl|hamstring curl|nordic/.test(n)) return 'leg-curl';
+  if (/curl/.test(n)) return 'curl';
+  // Tricep isolation — require explicit tricep/skull/JM/etc context so we
+  // don't swallow "Cable Glute Kickback" or "Kickbacks (Cable or Band)".
+  if (/pushdown|skull crusher|tricep kickback|tate press|jm press|french press|board press|overhead rope|close-grip bench|tricep extension|reverse-grip tricep/.test(n)) return 'tricep-iso';
+  if (/\bdip/.test(n)) return 'dip';
+  if (/calf raise/.test(n)) return 'calf';
+  // Glute isolation — groups donkey kicks / fire hydrants / clamshells / glute kickbacks
+  if (/glute kickback|donkey kick|fire hydrant|clamshell|frog pump|hip abduction|kickbacks \(cable/.test(n)) return 'glute-iso';
+  if (/hip thrust|glute bridge|kas glute/.test(n)) return 'hip-thrust';
+
+  // Vertical pulls
+  if (/lat pulldown|pulldown/.test(n)) return 'vertical-pull-machine';
+  if (/pull-up|chin-up/.test(n)) return 'vertical-pull-bw';
+  if (/pullover/.test(n)) return 'pullover';
+
+  // Pressing variants — two-stage match: name must contain "press" AND the
+  // variant keyword, with any words between. This catches "Incline Dumbbell
+  // Press" where the old `(incline) press` regex failed because of the word
+  // between.
+  if (/pike push|handstand/.test(n)) return 'vertical-press';
+  if (hasPress && /shoulder|overhead|arnold|z-press|bradford|landmine shoulder|half-kneeling landmine|bottoms-up|seated dumbbell|cuban|plate front raise|machine shoulder/.test(n)) return 'vertical-press';
+  if (hasPress && /incline|decline|\bflat\b|bench|floor|chest|spoto|larsen|\bhex\b|california|svend|\blandmine press\b/.test(n)) return 'horizontal-press';
+  if (/push-up/.test(n)) return 'push-up';
+
+  // Horizontal pulls — match "Row" and "Rows" (plural)
+  if (/\brows?\b/.test(n)) return 'horizontal-row';
+
+  // Hinge / squat / lunge — Leg Press counts as squat for dedup so visitors
+  // don't see Hack Squat + Leg Press + Front Squat on one day.
+  if (/deadlift|good morning|rack pull/.test(n)) return 'hinge';
+  if (/squat|leg press|\bbelt squat\b/.test(n)) return 'squat';
+  if (/lunge|step-up|step-through/.test(n)) return 'lunge';
+
+  // Core isolation
+  if (/plank|dead bug|hollow|bird dog|bicycle crunch|russian twist|v-up|ab wheel|woodchop|pallof|l-sit|leg raise|toes-to-bar|crunch|copenhagen|windshield|dragon flag|hanging knee/.test(n)) return 'core-iso';
+
+  // Conditioning patterns
+  if (/sled (push|drag|pull)/.test(n)) return 'sled';
+  if (/burpee/.test(n)) return 'burpee';
+  if (/box jump|broad jump|tuck jump|split squat jump|skater jump|plyo push|clapping push|hurdle hop|depth jump|jump squat|jumping jack|star jump|high knees/.test(n)) return 'plyo-jump';
+  if (/kettlebell swing|walking kettlebell/.test(n)) return 'kb-swing';
+  if (/snatch|\bclean\b|thruster|push press|sumo deadlift high pull/.test(n)) return 'olympic';
+  if (/wall ball/.test(n)) return 'wall-ball';
+  if (/battle rope|slam/.test(n)) return 'slam-rope';
+  if (/jump rope/.test(n)) return 'jump-rope';
+  if (/carry/.test(n)) return 'carry';
+  if (/ski ?erg|rowing machine|assault bike|echo bike|shuttle run|sprint/.test(n)) return 'ergo';
+
+  return null;
+}
+
+/**
+ * Deterministically pick exercises for a muscle group, respecting priority
+ * bias and avoiding duplicates within a workout day AND across the week.
+ *
+ * THREE layers of dedup:
+ *   1. `usedNames`       — same-day exact-name filter (hard)
+ *   2. `weeklyUsedNames` — whole-week exact-name penalty (−100, practically hard)
+ *   3. `dayPatterns`     — same-day movement-pattern penalty (−6 / −20)
+ *
+ * Selection is greedy: we re-score after each pick so the within-day pattern
+ * count bumps get reflected. That turns "three different bench press variants"
+ * into "one bench, one incline DB, one fly" because the second Press candidate
+ * takes −6 and the third takes −20 from pattern buildup.
+ *
+ * This — together with the week-wide penalty — is what eliminates the
+ * "Arnold Press on every upper day" and "Glute Bridge on every lower day"
+ * repetitions that showed up before, AND prevents same-pattern stacking
+ * within a single session.
+ */
+function selectExercises(muscleGroup, count, equipment, level, usedNames, priorityBias, goalBias = {}, bodyBias = {}, seed = 0.5, weeklyUsedNames = new Set(), dayPatterns = new Map()) {
   let pool = getAvailableExercises(muscleGroup, equipment, level);
 
-  // Remove already-used exercises + anything the goal or body type avoids
+  // Remove same-day duplicates + anything the goal or body type avoids
   const avoidSet = new Set([...(goalBias.avoid || []), ...(bodyBias.avoid || [])]);
   pool = pool.filter((e) => !usedNames.has(e.name) && !avoidSet.has(e.name));
 
@@ -793,13 +1019,13 @@ function selectExercises(muscleGroup, count, equipment, level, usedNames, priori
   const bodyPriority = bodyBias.priorityMuscles || [];
   const conditioningPrefer = new Set(bodyBias.conditioningPrefer || []);
 
-  // Score each exercise with a small seed-derived offset (0–3 points).
-  // Signature lifts (+12) still dominate, but exercises within a similar
-  // tier (±3 points) will swap positions per person → visible variety.
+  // Pre-compute per-exercise base scores (all non-pattern components + jitter).
+  // Jitter uses the seeded PRNG advancing once per exercise in pool order —
+  // keeps determinism intact while giving per-person variety.
   let prng = Math.floor(seed * 2147483647) || 1;
   const nextFloat = () => { prng = (prng * 16807) % 2147483647; return (prng - 1) / 2147483646; };
 
-  const scored = pool.map((ex) => {
+  const baseScored = pool.map((ex) => {
     let s = 0;
     if (signatures.has(ex.name)) s += 12;
     if (bodyPriority.includes(ex.primary)) s += 4;
@@ -810,14 +1036,40 @@ function selectExercises(muscleGroup, count, equipment, level, usedNames, priori
     if (goalBias.preferHeavy && ex.compound) s += 3;
     if (goalBias.preferBodyweight && ex.equipment.includes('bodyweight')) s += 2;
     if (ex.compound) s += 1;
-    // Per-person jitter: up to 3 points of noise so same-tier exercises shuffle
     s += nextFloat() * 3;
-    return { ex, s };
+    // Weekly-variety penalty: practically hard-filters repeats unless nothing
+    // else is available. Max positive base is ~40, so −100 always wins.
+    if (weeklyUsedNames.has(ex.name)) s -= 100;
+    return { ex, base: s, pattern: patternOf(ex.name) };
   });
-  scored.sort((a, b) => b.s - a.s);
 
-  const selected = scored.slice(0, count).map((item) => item.ex);
-  selected.forEach((e) => usedNames.add(e.name));
+  // Greedy selection: pick highest-scoring, then re-score remaining with the
+  // updated dayPatterns count. This prevents within-day pattern stacking.
+  const remaining = baseScored.slice();
+  const selected = [];
+  while (selected.length < count && remaining.length > 0) {
+    let bestIdx = -1;
+    let bestScore = -Infinity;
+    for (let i = 0; i < remaining.length; i++) {
+      const item = remaining[i];
+      let score = item.base;
+      if (item.pattern) {
+        const used = dayPatterns.get(item.pattern) || 0;
+        if (used === 1) score -= 6;
+        else if (used >= 2) score -= 20;
+      }
+      if (score > bestScore) {
+        bestScore = score;
+        bestIdx = i;
+      }
+    }
+    if (bestIdx < 0) break;
+    const pick = remaining.splice(bestIdx, 1)[0];
+    selected.push(pick.ex);
+    usedNames.add(pick.ex.name);
+    weeklyUsedNames.add(pick.ex.name);
+    if (pick.pattern) dayPatterns.set(pick.pattern, (dayPatterns.get(pick.pattern) || 0) + 1);
+  }
   return selected;
 }
 
@@ -825,6 +1077,22 @@ function selectExercises(muscleGroup, count, equipment, level, usedNames, priori
 
 function buildWhyExercise(exercise, proportionInsights, biasNotes, bodyType, goals) {
   const parts = [];
+
+  // Mobility has its own reasoning track — skip the compound/isolation copy.
+  if (exercise.primary === 'mobility') {
+    const isYoga = exercise.modality === 'yoga';
+    if (isYoga) {
+      parts.push('Power yoga flow to build mobility under load and active control.');
+      parts.push('Closes the week with breath-paced movement that supports recovery for every body type.');
+    } else {
+      parts.push('Targeted flexibility work for the joints your training stresses most.');
+      parts.push('Stays on the booth plan because mobility is what keeps gains safe and sustainable.');
+    }
+    if (goals.includes('athletic')) {
+      parts.push('Athletes with good range of motion generate more force — this pays back into every lift.');
+    }
+    return parts.join(' ');
+  }
 
   // Proportion-based reasoning
   if (biasNotes.length > 0) {
@@ -1031,17 +1299,52 @@ export async function generateLocalRoutine(userInfo, analysisData) {
   // Merge proportional notes into insights for richer whyThisExercise text
   const allInsights = [...insights, ...proportionalNotes.map((n) => n.toLowerCase())];
 
+  // Append a mobility finisher to the last training day of every split.
+  // This guarantees every routine closes the week with a flexibility/yoga
+  // block — good for recovery, and makes the product feel well-rounded.
+  if (split.days.length > 0) {
+    const last = split.days[split.days.length - 1];
+    if (!last.muscleGroups.includes('mobility')) {
+      last.muscleGroups = [...last.muscleGroups, 'mobility'];
+    }
+  }
+
+  // Week-wide used-names set: threads through selectExercises so the same
+  // movement doesn't surface on multiple days of the week.
+  const weeklyUsedNames = new Set(injuryExclusions);
+
   // ---- Build each day ----
   const weeklySchedule = split.days.map((dayPlan) => {
-    const usedNames = new Set(injuryExclusions); // pre-seed exclusions
+    const usedNames = new Set(injuryExclusions); // pre-seed same-day exclusions
+    // Day-scoped movement-pattern counts (horizontal-press, squat, etc.)
+    // Reset per day so Monday's pattern counts don't block Tuesday's.
+    const dayPatterns = new Map();
     const dayExercises = [];
 
     dayPlan.muscleGroups.forEach((mg, idx) => {
       const isFocus = idx < 2; // first two groups are the focus
       const count = exercisesPerGroup(mg, isFocus, level);
-      const selected = selectExercises(mg, count, equipment, level, usedNames, biases.prioritise, goalBias, bodyBias, seed);
+      const selected = selectExercises(mg, count, equipment, level, usedNames, biases.prioritise, goalBias, bodyBias, seed, weeklyUsedNames, dayPatterns);
 
       selected.forEach((ex) => {
+        // Mobility: flow / hold format, not reps
+        if (mg === 'mobility' || ex.primary === 'mobility') {
+          const isYoga = ex.modality === 'yoga';
+          dayExercises.push({
+            name: ex.name,
+            sets: 2,
+            reps: isYoga ? '5-8 breath-led flow' : '45 sec hold each side',
+            rest: '15 seconds',
+            tempo: 'Slow, breath-led',
+            muscleGroup: 'mobility',
+            notes: isYoga
+              ? 'Move with the breath — inhale to lengthen, exhale to deepen.'
+              : 'Hold where you feel tension, not pain. Breathe into the restriction.',
+            whyThisExercise: buildWhyExercise(ex, allInsights, biases.notes, bodyType, goals),
+          });
+          return;
+        }
+
         // Conditioning exercises get interval/time-based formatting
         if (mg === 'conditioning' || ex.primary === 'conditioning') {
           const isCardio = ex.modality === 'cardio';
