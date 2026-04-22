@@ -14,6 +14,15 @@ const DEFAULT_USER_INFO = {
   experienceLevel: 'intermediate',
   injuries: '',
   equipment: ['full-gym'],
+
+  // Optional demographic chips picked on the landing page. Numeric fields
+  // (age/height/weight) get the band midpoint so bodyMetrics + the routine
+  // generator have usable numbers; the *Range labels persist the human-
+  // readable bucket so LeadCapture can ship "25-34" / "175-185" to Supabase
+  // for segmentation. Null = visitor skipped — defaults above stay in play.
+  ageRange: null,
+  heightRange: null,
+  weightRange: null,
 };
 
 const useScanStore = create((set) => ({

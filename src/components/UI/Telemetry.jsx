@@ -81,10 +81,18 @@ export function useClock() {
  */
 export function TopBar({ stage, right = null, accentLive = true }) {
   const clock = useClock();
+  // BASE_URL is "/fitscan/" in prod (GitHub Pages), "/" in dev — strip the
+  // trailing slash so the path concatenation reads cleanly in both modes.
+  const brandSrc = `${import.meta.env.BASE_URL.replace(/\/$/, '')}/brand/horizontal-white.png`;
   return (
     <header className="border-b border-text/10 px-6 sm:px-10 py-4 flex items-center justify-between font-ui text-[11px] tracking-[0.3em] uppercase">
       <div className="flex items-center gap-4">
-        <span className="text-text/60">SQUATWOLF</span>
+        <img
+          src={brandSrc}
+          alt="SQUATWOLF"
+          className="h-5 w-auto opacity-80"
+          draggable={false}
+        />
         <span className="text-text/20">/</span>
         <span className="text-accent">{stage}</span>
       </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import useScanStore from '../../context/ScanContext';
 import { loadPoseDetector } from '../../services/poseService';
 import { GOALS, ROUTES } from '../../utils/constants';
@@ -8,21 +8,84 @@ import { SectionLabel, BracketFrame, TopBar, BottomBar } from '../UI/Telemetry';
 import ConsentGate from '../Privacy/ConsentGate';
 
 /**
+ * Optional demographic chips. Each row maps a human-readable bucket label
+ * to the midpoint value we feed into bodyMetrics + the routine generator.
+ *
+ *   • `value` — numeric midpoint (years / cm / kg) so frame-size and BMI
+ *     calculations have something realistic to work with. Falls back to the
+ *     DEFAULT_USER_INFO seed when the visitor skips.
+ *   • `label` — string we persist on the lead row (e.g. "25-34") so
+ *     marketing can segment by bucket without re-binning numeric values.
+ *
+ * Buckets are deliberately wide — booths are anonymous, visitors won't
+ * tap through 10 options, and tighter buckets give us false precision.
+ */
+const AGE_RANGES = [
+  { label: '18-24', value: '21' },
+  { label: '25-34', value: '30' },
+  { label: '35-44', value: '40' },
+  { label: '45-54', value: '50' },
+  { label: '55+',   value: '60' },
+];
+
+const HEIGHT_RANGES = [
+  { label: '<165',    value: '160' },
+  { label: '165-175', value: '170' },
+  { label: '175-185', value: '180' },
+  { label: '185+',    value: '190' },
+];
+
+const WEIGHT_RANGES = [
+  { label: '<60',     value: '55' },
+  { label: '60-75',   value: '68' },
+  { label: '75-90',   value: '83' },
+  { label: '90-105',  value: '98' },
+  { label: '105+',    value: '110' },
+];
+
+/**
  * Stage 01 — landing screen.
  *
  * Visual language is shared with the scanner and routine pages:
  *   • TopBar/BottomBar telemetry chrome
- *   • Numbered section rails (01 / I AM, 02 / GOAL)
+ *   • Numbered section rails (01 / I AM, 02 / TUNE IT, 03 / GOAL)
  *   • Boxy panels with corner brackets and a hover-to-rounded transition
  *   • Editorial Barlow Condensed display headline with a single accent word
+ *
+ * TUNE IT is collapsed by default — visitors who tap straight through to a
+ * goal don't see it; curious ones can expand to share age/height/weight
+ * buckets that feed the routine generator and ship to Supabase as marketing
+ * segmentation data.
  */
 export default function BoothLanding() {
   const navigate = useNavigate();
-  const { setBoothGoal, setGender, setConsentAccepted, reset } = useScanStore();
+  const { setBoothGoal, setGender, setConsentAccepted, setUserInfo, reset } = useScanStore();
+  const ageRange = useScanStore((s) => s.userInfo?.ageRange);
+  const heightRange = useScanStore((s) => s.userInfo?.heightRange);
+  const weightRange = useScanStore((s) => s.userInfo?.weightRange);
+
   const [gender, setLocalGender] = useState('male');
+  // TUNE IT panel is collapsed by default — keeps the booth flow tight for
+  // the 95% who tap straight through to a goal. Curious visitors can open it.
+  const [tuneOpen, setTuneOpen] = useState(false);
   // Pending goal — set when the visitor taps a goal, cleared once they
   // either accept consent (and we navigate) or decline (and we drop it).
   const [pendingGoal, setPendingGoal] = useState(null);
+
+  // Chip taps write *both* the numeric field (so bodyMetrics + the routine
+  // generator have a realistic value to work with) and the human range label
+  // (so LeadCapture ships it to Supabase for segmentation). Tapping the same
+  // chip again clears the selection — null falls back to DEFAULT_USER_INFO.
+  const pickRange = (key, range) => (option) => {
+    const isSame = range === option.label;
+    if (key === 'age') {
+      setUserInfo({ age: isSame ? '28' : option.value, ageRange: isSame ? null : option.label });
+    } else if (key === 'height') {
+      setUserInfo({ height: isSame ? '175' : option.value, heightUnit: 'cm', heightRange: isSame ? null : option.label });
+    } else if (key === 'weight') {
+      setUserInfo({ weight: isSame ? '75' : option.value, weightUnit: 'kg', weightRange: isSame ? null : option.label });
+    }
+  };
 
   useEffect(() => {
     reset();
@@ -188,9 +251,72 @@ export default function BoothLanding() {
             </div>
           </div>
 
-          {/* 02 — GOAL */}
+          {/* 02 — TUNE IT (optional) */}
+          <div className="space-y-4 mb-8">
+            <button
+              type="button"
+              onClick={() => setTuneOpen((v) => !v)}
+              className="w-full text-left cursor-pointer group"
+              aria-expanded={tuneOpen}
+            >
+              <div className="flex items-center gap-3 font-ui text-[10px] uppercase tracking-[0.4em] text-text/40 group-hover:text-text/70 transition-colors">
+                <span className="text-accent">02</span>
+                <span className="text-text/20">/</span>
+                <span>TUNE IT</span>
+                <span className="text-text/30 group-hover:text-text/60 normal-case tracking-wide text-[10px]">
+                  · optional
+                </span>
+                <span className="flex-1 h-px bg-text/10" />
+                <span className="text-accent text-[11px]">{tuneOpen ? '−' : '+'}</span>
+              </div>
+              {!tuneOpen && (
+                <p className="font-body text-text/40 text-xs mt-2 normal-case tracking-normal">
+                  Share age, height &amp; weight to dial the routine in tighter. Skip if you'd rather not.
+                </p>
+              )}
+            </button>
+
+            <AnimatePresence initial={false}>
+              {tuneOpen && (
+                <motion.div
+                  key="tune-content"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.25, ease: 'easeOut' }}
+                  className="overflow-hidden"
+                >
+                  <div className="space-y-4 pt-1">
+                    <ChipRow
+                      label="AGE"
+                      unit="YRS"
+                      options={AGE_RANGES}
+                      selected={ageRange}
+                      onPick={pickRange('age', ageRange)}
+                    />
+                    <ChipRow
+                      label="HEIGHT"
+                      unit="CM"
+                      options={HEIGHT_RANGES}
+                      selected={heightRange}
+                      onPick={pickRange('height', heightRange)}
+                    />
+                    <ChipRow
+                      label="WEIGHT"
+                      unit="KG"
+                      options={WEIGHT_RANGES}
+                      selected={weightRange}
+                      onPick={pickRange('weight', weightRange)}
+                    />
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+
+          {/* 03 — GOAL */}
           <div className="space-y-4">
-            <SectionLabel n="02" title="GOAL" />
+            <SectionLabel n="03" title="GOAL" />
             <div className="space-y-3">
               <GoalButton
                 label="BUILD MUSCLE"
@@ -225,6 +351,47 @@ export default function BoothLanding() {
         onAccept={handleConsentAccept}
         onDecline={handleConsentDecline}
       />
+    </div>
+  );
+}
+
+/**
+ * Optional demographic chip row — label on the left, tappable buckets on the
+ * right. Tapping a selected chip clears the selection (toggles back to the
+ * default seed). Matches the gender selector aesthetic so the booth visual
+ * language stays consistent.
+ */
+function ChipRow({ label, unit, options, selected, onPick }) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-baseline justify-between">
+        <span className="font-ui text-[10px] tracking-[0.3em] uppercase text-text/40">
+          {label}
+        </span>
+        <span className="font-ui text-[9px] tracking-[0.3em] uppercase text-text/20">
+          {unit}
+        </span>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        {options.map((opt) => {
+          const isSelected = selected === opt.label;
+          return (
+            <button
+              key={opt.label}
+              type="button"
+              onClick={() => onPick(opt)}
+              aria-pressed={isSelected}
+              className={`px-3 py-2 rounded-none border font-ui text-[11px] tracking-[0.2em] uppercase transition-all cursor-pointer tabular-nums ${
+                isSelected
+                  ? 'bg-accent border-accent text-text'
+                  : 'border-text/15 text-text/50 hover:border-text/40 hover:text-text/80'
+              }`}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

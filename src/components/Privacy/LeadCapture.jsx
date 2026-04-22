@@ -36,12 +36,18 @@ import { STORAGE_KEYS } from '../../utils/constants';
  *
  * Payload shape — snake_case so it drops cleanly into a Supabase insert:
  *   { name, email, phone, gender, marketing_opt_in, body_type, goal,
- *     source, captured_at }
+ *     age_range, height_range, weight_range, source, captured_at }
  */
 export default function LeadCapture() {
   const bodyType = useScanStore((s) => s.bodyType);
   const boothGoal = useScanStore((s) => s.boothGoal);
   const gender = useScanStore((s) => s.userInfo?.gender);
+  // Optional demographic buckets picked on landing — null when skipped.
+  // Persist the human-readable label (e.g. "25-34") rather than the numeric
+  // midpoint so marketing can segment on the same buckets visitors saw.
+  const ageRange = useScanStore((s) => s.userInfo?.ageRange);
+  const heightRange = useScanStore((s) => s.userInfo?.heightRange);
+  const weightRange = useScanStore((s) => s.userInfo?.weightRange);
   const setGender = useScanStore((s) => s.setGender);
   const leadCaptured = useScanStore((s) => s.leadCaptured);
   const setLeadCaptured = useScanStore((s) => s.setLeadCaptured);
@@ -86,6 +92,12 @@ export default function LeadCapture() {
       marketing_opt_in: optIn,
       body_type: bodyType || null,
       goal: boothGoal || null,
+      // Optional demographic buckets — null when the visitor skipped TUNE IT.
+      // Strings ("25-34" / "175-185" / "60-75") so marketing can group on the
+      // exact buckets visitors saw without re-binning numeric values.
+      age_range: ageRange || null,
+      height_range: heightRange || null,
+      weight_range: weightRange || null,
       source: 'booth-fitscan',
       captured_at: new Date().toISOString(),
     };
