@@ -11,8 +11,6 @@ import { GOALS, ROUTES } from '../../utils/constants';
 import { SectionLabel, BracketFrame, TopBar, BottomBar, padFrame } from '../UI/Telemetry';
 import LeadCapture from '../Privacy/LeadCapture';
 
-const AUTO_RESET_SECONDS = 60;
-
 // QR v40 at error-correction level L tops out at 2,953 bytes of payload.
 // Above that, qrcode.react silently fails to encode, so we swap in a fallback.
 const MAX_QR_PAYLOAD = 2953;
@@ -24,8 +22,8 @@ const MAX_QR_PAYLOAD = 2953;
  *  - 02 / SCHEDULE: numbered day cards, click to open the full workout modal
  *  - 03 / TAKE IT WITH YOU: QR card (booth only — phone viewer hides this)
  *  - 04 / GEAR FOR YOUR BUILD: product recommendations
- *  - Auto-resets after AUTO_RESET_SECONDS so the booth is always ready for
- *    the next visitor; phone viewer has no timer.
+ *  - Reset is manual — visitor (or staff) taps "START OVER" at the bottom.
+ *    No auto-timeout; the QR + routine stay on screen until someone acts.
  *
  * Modal a11y: dialog role + Esc-to-close + focus restoration to the opener.
  */
@@ -42,26 +40,7 @@ export default function BoothRoutine({ phoneMode = false }) {
   const leadCaptured = useScanStore((s) => s.leadCaptured);
   const reset = useScanStore((s) => s.reset);
 
-  const [secondsLeft, setSecondsLeft] = useState(AUTO_RESET_SECONDS);
   const [openDayIdx, setOpenDayIdx] = useState(null);
-
-  // Auto-reset countdown — booth only (phone viewer has no timer)
-  useEffect(() => {
-    if (phoneMode) return;
-    if (routineLoading || routineError || !routine) return;
-    const id = setInterval(() => {
-      setSecondsLeft((s) => {
-        if (s <= 1) {
-          clearInterval(id);
-          reset();
-          navigate(ROUTES.LANDING);
-          return 0;
-        }
-        return s - 1;
-      });
-    }, 1000);
-    return () => clearInterval(id);
-  }, [phoneMode, routine, routineLoading, routineError, reset, navigate]);
 
   // QR target URL.
   //
@@ -214,16 +193,7 @@ export default function BoothRoutine({ phoneMode = false }) {
       />
       <div className="absolute left-0 top-0 bottom-0 w-px bg-accent/20 -z-10" aria-hidden="true" />
 
-      {!phoneMode && (
-        <TopBar
-          stage="ROUTINE"
-          right={
-            <span className="hidden sm:inline">
-              RESET / <span className="text-accent tabular-nums">{padFrame(secondsLeft, 2)}S</span>
-            </span>
-          }
-        />
-      )}
+      {!phoneMode && <TopBar stage="ROUTINE" />}
 
       <main className={`${phoneMode ? 'px-4 py-8' : 'px-6 sm:px-10 lg:px-14 py-10'} flex-1 max-w-7xl mx-auto w-full`}>
         {/* HERO STRIP */}
