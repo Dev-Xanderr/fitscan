@@ -27,7 +27,10 @@ jobs:
           node-version: 20
           cache: npm
 
-      - run: npm ci
+      # `npm install` instead of `npm ci` so CI can resolve deps added to
+      # package.json without requiring a locally-regenerated lockfile. Flip
+      # back to `npm ci` once the lockfile is committed in sync.
+      - run: npm install
 
       - run: npm run build
         env:

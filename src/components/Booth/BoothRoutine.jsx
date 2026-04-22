@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import LZString from 'lz-string';
+import { toBlob } from 'html-to-image';
 import useScanStore from '../../context/ScanContext';
 import LoadingSpinner from '../UI/LoadingSpinner';
 import Button from '../UI/Button';
@@ -88,6 +89,74 @@ export default function BoothRoutine({ phoneMode = false }) {
 
   // Modal close — stable callback so Esc handler and click handlers share one path.
   const closeDay = useCallback(() => setOpenDayIdx(null), []);
+
+  // Save-as-image wiring (phoneMode only). Captures the routine content as a
+  // PNG and hands it to the native share sheet on phones (which offers
+  // "Save to Photos"); falls back to a plain download on desktop browsers.
+  const captureRef = useRef(null);
+  const [capturing, setCapturing] = useState(false);
+  const saveAsImage = useCallback(async () => {
+    if (!captureRef.current || capturing) return;
+    setCapturing(true);
+    try {
+      // pixelRatio:2 → retina-sharp image. backgroundColor matches bg-bg so the
+      // capture isn't transparent (the page's dusk gradient lives on a -z-10
+      // sibling and isn't part of the captured node).
+      // The filter drops any node tagged data-no-capture so UI chrome like the
+      // save button itself doesn't end up in the saved image.
+      const blob = await toBlob(captureRef.current, {
+        pixelRatio: 2,
+        backgroundColor: '#121212',
+        cacheBust: true,
+        filter: (node) =>
+          !(node instanceof HTMLElement) || node.dataset?.noCapture !== 'true',
+      });
+      if (!blob) throw new Error('Capture returned empty');
+
+      const slug = (bodyType || 'routine').toString().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+      const filename = `squatwolf-routine-${slug}.png`;
+      const file = new File([blob], filename, { type: 'image/png' });
+
+      // Web Share API with files → opens the phone's native share sheet which
+      // has "Save Image" / "Save to Photos" built in. This is by far the best
+      // mobile UX — no download-prompts, no popup-blocked weirdness on Safari.
+      if (
+        typeof navigator !== 'undefined' &&
+        navigator.canShare &&
+        navigator.canShare({ files: [file] })
+      ) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: 'My SQUATWOLF Routine',
+            text: 'Built at the booth.',
+          });
+          return;
+        } catch (err) {
+          // User dismissed the share sheet — not an error, just don't fall
+          // through to the download. Any other failure falls through.
+          if (err?.name === 'AbortError') return;
+          console.warn('Share failed, falling back to download:', err);
+        }
+      }
+
+      // Desktop / share-unsupported fallback: trigger a download via a
+      // disposable anchor. Revoke the object URL after a tick so the browser
+      // doesn't leak it.
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      console.error('Could not save routine image:', err);
+    } finally {
+      setCapturing(false);
+    }
+  }, [bodyType, capturing]);
 
   // Esc-to-close + focus restoration. Capture the activeElement on open so
   // we can return focus to the day card that triggered the modal.
@@ -195,7 +264,10 @@ export default function BoothRoutine({ phoneMode = false }) {
 
       {!phoneMode && <TopBar stage="ROUTINE" />}
 
-      <main className={`${phoneMode ? 'px-4 py-8' : 'px-6 sm:px-10 lg:px-14 py-10'} flex-1 max-w-7xl mx-auto w-full`}>
+      <main
+        ref={captureRef}
+        className={`${phoneMode ? 'px-4 py-8' : 'px-6 sm:px-10 lg:px-14 py-10'} flex-1 max-w-7xl mx-auto w-full`}
+      >
         {/* HERO STRIP */}
         <motion.section
           initial={{ opacity: 0, y: 16 }}
@@ -370,6 +442,31 @@ export default function BoothRoutine({ phoneMode = false }) {
             >
               ▸ START OVER
             </Button>
+          </motion.div>
+        )}
+
+        {/* Save-as-image — phone only. Marked data-no-capture so the button
+            itself isn't part of the saved PNG. The hint below doubles as the
+            "where does it go?" affordance — different phones land in different
+            apps (Photos, Files, share sheet), so we don't over-promise. */}
+        {phoneMode && (
+          <motion.div
+            data-no-capture="true"
+            className="mt-10 flex flex-col items-center gap-2"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.45 }}
+          >
+            <Button
+              variant="primary"
+              onClick={saveAsImage}
+              disabled={capturing}
+            >
+              {capturing ? 'SAVING…' : '▸ SAVE AS IMAGE'}
+            </Button>
+            <span className="font-ui text-[10px] tracking-[0.3em] uppercase text-text/30 text-center">
+              ▸ KEEP IT OFFLINE · WORKS AT THE GYM
+            </span>
           </motion.div>
         )}
       </main>
