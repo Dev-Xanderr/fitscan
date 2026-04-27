@@ -96,7 +96,7 @@ The booth captures visitor leads (name / email / phone / gender + optional demog
 
 To bootstrap or verify the schema, run `supabase/bootstrap.sql` in the Supabase Studio SQL editor. It is idempotent — safe against an already-set-up project.
 
-In CI, `VITE_SUPABASE_ANON_KEY` is read from a GitHub Actions secret so it can be rotated without a git history rewrite.
+`VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are committed to `.env.production`. They're both public-by-design — the anon key ends up in the JS bundle on every deploy, and RLS is the security boundary. Rotate by editing `.env.production` and redeploying.
 
 ---
 
