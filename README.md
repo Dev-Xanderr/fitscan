@@ -80,11 +80,23 @@ npm install
 npm run dev
 ```
 
-Requires a `.env` file with:
+Requires a `.env.local` file with:
 
 ```
 VITE_ANTHROPIC_API_KEY=your_key_here
+VITE_SUPABASE_URL=https://dllsoplwcibepqlcigtu.supabase.co
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
 ```
+
+Only `VITE_ANTHROPIC_API_KEY` is required for `npm run dev` to actually function. The Supabase vars only matter for the booth lead-capture flow — without them, leads still queue to localStorage and the operator can drain manually.
+
+### Lead capture / Supabase
+
+The booth captures visitor leads (name / email / phone / gender + optional demographic buckets + marketing opt-in) and inserts them into a Supabase `leads` table via direct REST. The anon key is shipped in the public bundle; row-level security restricts the anon role to inserts only.
+
+To bootstrap or verify the schema, run `supabase/bootstrap.sql` in the Supabase Studio SQL editor. It is idempotent — safe against an already-set-up project.
+
+In CI, `VITE_SUPABASE_ANON_KEY` is read from a GitHub Actions secret so it can be rotated without a git history rewrite.
 
 ---
 

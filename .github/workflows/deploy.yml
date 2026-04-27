@@ -35,6 +35,11 @@ jobs:
       - run: npm run build
         env:
           VITE_ANTHROPIC_API_KEY: ${{ secrets.VITE_ANTHROPIC_API_KEY }}
+          # Supabase URL is public-by-design and lives in .env.production;
+          # the anon key is also public-by-design (RLS gates writes), but we
+          # keep it in repo secrets so it's easy to rotate without a git
+          # history rewrite.
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       - uses: actions/configure-pages@v4
 

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import useScanStore from '../../context/ScanContext';
 import Button from '../UI/Button';
 import { SectionLabel, BracketFrame } from '../UI/Telemetry';
-import { STORAGE_KEYS } from '../../utils/constants';
+import { queueLeadLocally, flushQueuedLeads } from '../../services/supabase';
 
 /**
  * LeadCapture — opt-in inbox delivery form on the routine screen.
@@ -27,12 +27,14 @@ import { STORAGE_KEYS } from '../../utils/constants';
  *   • Optimistic success state — "ON ITS WAY." flashes the instant they
  *     tap SEND; the network round-trip is fire-and-forget behind it.
  *
- * Submission strategy:
- *   • If VITE_LEAD_ENDPOINT is set → POST JSON to that URL. (Supabase
- *     client takes over in Chunk 2.)
- *   • Whether or not the network call succeeds, the lead also writes to
- *     localStorage[STORAGE_KEYS.LEADS] as a JSON array, so an unattended
- *     kiosk doesn't lose leads if the network is flaky.
+ * Submission strategy (see services/supabase.js):
+ *   • Lead is appended to localStorage queue first (never lose a submission
+ *     to a flaky network).
+ *   • flushQueuedLeads() POSTs the entire queue to Supabase in one
+ *     transactional batch. On success the queue clears; on failure it's
+ *     retained for retry on the next visitor's submission.
+ *   • The success state flips optimistically — visitor sees "ON ITS WAY."
+ *     immediately, the network call is fire-and-forget behind it.
  *
  * Payload shape — snake_case so it drops cleanly into a Supabase insert:
  *   { name, email, phone, gender, marketing_opt_in, body_type, goal,
@@ -103,27 +105,18 @@ export default function LeadCapture() {
     };
 
     // Optimistic flip — the visitor sees "ON ITS WAY." instantly. If the
-    // network POST fails, it's still safe in localStorage for the operator
-    // to drain. No reason to make them wait on a spinner for an action
-    // whose failure mode is invisible to them.
+    // network POST fails, it's still safe in localStorage for the next
+    // submission to drain. No reason to make them wait on a spinner for
+    // an action whose failure mode is invisible to them.
     setSubmitting(true);
     setLeadCaptured(true);
-    persistLeadLocally(lead);
+    queueLeadLocally(lead);
 
-    const endpoint = import.meta.env.VITE_LEAD_ENDPOINT;
-    if (endpoint) {
-      try {
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(lead),
-        });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      } catch (err) {
-        // Silent — the lead is already in localStorage. Log for the operator.
-        console.warn('Lead endpoint failed (saved locally):', err);
-      }
-    }
+    // Fire-and-forget. flushQueuedLeads sends the entire queue (current lead
+    // plus any backed-up leads from earlier offline submissions) and clears
+    // the queue on success. Failures are logged and the queue is retained
+    // for the next visitor to retry.
+    flushQueuedLeads();
 
     setSubmitting(false);
   };
@@ -381,19 +374,4 @@ function normaliseGender(g) {
   const lower = String(g).toLowerCase();
   if (lower === 'male' || lower === 'female') return lower;
   return 'other';
-}
-
-/**
- * Append a lead to the localStorage queue. Best-effort — if storage is full
- * or unavailable we just log and move on. The booth has no other recovery.
- */
-function persistLeadLocally(lead) {
-  try {
-    const raw = window.localStorage.getItem(STORAGE_KEYS.LEADS);
-    const queue = raw ? JSON.parse(raw) : [];
-    queue.push(lead);
-    window.localStorage.setItem(STORAGE_KEYS.LEADS, JSON.stringify(queue));
-  } catch (err) {
-    console.warn('Could not persist lead to localStorage:', err);
-  }
 }
