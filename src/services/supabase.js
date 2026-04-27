@@ -1,44 +1,36 @@
 // ---------------------------------------------------------------------------
 // supabase.js
-// Booth → Supabase lead capture, two-phase write keyed by scan_id.
+// Booth → Supabase lead capture. Single write at form submit — no dead rows.
 //
-// Why two phases:
-//   Marketing wants the conversion funnel, not just the bottom. Visitors who
-//   scan but walk away before claiming the workout still produce a row with
-//   gender / goal / demographics — name / email / phone stay NULL. Whoever
-//   makes it through to the lead form upserts onto the same row.
+// One DB write per visitor, fired when they submit the lead form (name +
+// phone + email + marketing opt-in). The payload also carries the
+// landing-page data (gender, goal, optional age/height/weight bands) plus
+// the scan results (body_type, frame_size). Visitors who scan but walk
+// away before claiming the workout produce nothing in the DB — the booth
+// gets the conversion, not the funnel.
 //
-//   Phase 1 (submitInitialScan)  — fires from BoothLanding.pickGoal at the
-//                                  moment the visitor commits to scanning.
-//                                  Captures: scan_id, gender, goal, optional
-//                                  age/height/weight bands, source, captured_at.
-//   Phase 2 (finaliseLead)       — fires from LeadCapture on form submit.
-//                                  Upserts the same scan_id row with: name,
-//                                  email, phone, marketing_opt_in, body_type,
-//                                  frame_size.
+// We use a SECURITY DEFINER RPC (`finalise_lead`) instead of a direct
+// INSERT/UPSERT because something in this Supabase project (hidden trigger
+// / restrictive policy / Studio-managed hook) was rejecting any UPDATE that
+// touched the `name` column with a 42501 RLS error, even with WITH CHECK
+// (true) on the UPDATE policy. The RPC body runs as the function owner,
+// bypassing RLS for the INSERT...ON CONFLICT DO UPDATE statement inside.
+// See supabase/migrations/2026-04-27_finalise_lead_rpc.sql.
 //
-// Both writes are PostgREST upserts (`Prefer: resolution=merge-duplicates`,
-// `?on_conflict=scan_id`). That way, if phase 1's network call dies but
-// phase 2 lands, the row is still created with all known fields. We never
-// lose conversions to a dropped initial fetch.
-//
-// We don't use @supabase/supabase-js — for two REST calls + a queue helper
+// We don't use @supabase/supabase-js — for one REST call + a queue helper
 // it would add ~50KB gzipped for nothing we'd use.
 //
-// Anon key is shipped in the public bundle. RLS is the security boundary:
-//   • INSERT  → anon, no restriction
-//   • UPDATE  → anon, only rows where name IS NULL AND captured_at within
-//               the last 10 minutes (i.e. unfinalised + fresh)
-//   • SELECT  → not granted to anon
-// See supabase/bootstrap.sql for the policy SQL.
+// Anon key is shipped in the public bundle. With the RPC handling all
+// writes, anon's surface on the leads table itself can be tightened down
+// to just EXECUTE on the function.
 //
 // Resilience:
-//   • Phase 1 is fire-and-forget. If it fails we just log; phase 2's upsert
-//     will create the row from scratch.
-//   • Phase 2 queues the payload to localStorage before the network call. On
-//     each phase-2 attempt we try to flush the entire queue in one batch —
-//     if a kiosk runs offline all day, the next online visitor's submission
-//     drains everyone's records.
+//   • Each submission is queued to localStorage before the network call.
+//   • Calls to the RPC are sequential — partial drains shrink the queue
+//     so the rest can retry on the next visitor's submission.
+//   • Worst case: a kiosk runs offline all day, queue grows to N
+//     submissions, the first online visitor's submit flushes everyone's
+//     data at once.
 // ---------------------------------------------------------------------------
 
 import { STORAGE_KEYS } from '../utils/constants';
@@ -75,34 +67,10 @@ export function newScanId() {
 }
 
 /**
- * Plain INSERT. Used for phase 1 only — works fine with anon's INSERT
- * policy and doesn't trigger the post-update RLS quirk that plagues UPSERT.
- */
-async function insertLead(row) {
-  if (!isSupabaseConfigured()) {
-    throw new Error('Supabase env vars missing — set VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY');
-  }
-  const res = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      apikey: SUPABASE_ANON_KEY,
-      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      Prefer: 'return=minimal',
-    },
-    body: JSON.stringify(row),
-  });
-  if (!res.ok) {
-    const errText = await res.text().catch(() => '');
-    throw new Error(`Supabase insert ${res.status}: ${errText.slice(0, 240)}`);
-  }
-}
-
-/**
- * Phase 2 upsert via RPC. Calls public.finalise_lead — a SECURITY DEFINER
- * Postgres function that does the INSERT...ON CONFLICT DO UPDATE as the
- * function owner, bypassing the opaque RLS WITH-CHECK rejection that
- * blocked our direct UPSERT path. The function does its own app-level
+ * Calls public.finalise_lead — a SECURITY DEFINER Postgres function that
+ * does the INSERT (or merge if scan_id already exists, e.g. a double-tap
+ * retry) as the function owner, bypassing the opaque RLS WITH-CHECK
+ * rejection that blocks direct UPSERT. The function does its own app-level
  * validation (scan_id present, contact fields non-empty) since RLS no
  * longer guards it.
  *
@@ -127,38 +95,10 @@ async function callFinaliseLeadRpc(payload) {
   }
 }
 
-// ============================== PHASE 1 ===================================
-
-/**
- * Phase 1: fire-and-forget INSERT at scan-start. Captures everything known
- * on the landing page — gender, goal, optional demographic bands.
- *
- * Failures are logged but never block the booth flow. If this drops, phase
- * 2's upsert creates the row from scratch with whatever it has.
- */
-export async function submitInitialScan({ scanId, gender, goal, ageRange, heightRange, weightRange }) {
-  if (!isSupabaseConfigured() || !scanId) return;
-  const payload = {
-    scan_id: scanId,
-    gender: gender || null,
-    goal: goal || null,
-    age_range: ageRange || null,
-    height_range: heightRange || null,
-    weight_range: weightRange || null,
-    source: 'booth-fitscan',
-    captured_at: new Date().toISOString(),
-  };
-  try {
-    await insertLead(payload);
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn('Initial scan write failed (phase 2 RPC will compensate):', err);
-  }
-}
-
-// ============================== PHASE 2 ===================================
-// Queue helpers for the form-submit upsert. Phase 2 is the high-stakes one
-// (it's where contact info lands), so we back it with localStorage.
+// ============================== QUEUE =====================================
+// Backs the form-submit RPC against flaky network. Each submission is
+// queued to localStorage before the network call; on each submit attempt
+// we try to drain the entire queue.
 
 function readQueue() {
   try {
@@ -179,9 +119,10 @@ function writeQueue(queue) {
 }
 
 /**
- * Phase 2: form submit. Calls the SECURITY DEFINER RPC `finalise_lead`,
- * which does the INSERT...ON CONFLICT DO UPDATE as the function owner,
- * bypassing the opaque RLS rejection that blocked our direct UPSERT.
+ * Form submit — the only DB write per visitor. Calls the SECURITY DEFINER
+ * RPC `finalise_lead`, which inserts (or merges on rare retry) as the
+ * function owner, bypassing the opaque RLS rejection that blocked our
+ * direct UPSERT.
  *
  * Queues the payload locally first, then attempts to flush the whole
  * queue (current submission + any backed-up payloads from earlier offline
@@ -189,9 +130,9 @@ function writeQueue(queue) {
  * sequentially fire each one — partial successes shrink the queue.
  */
 export async function finaliseLead({ scanId, name, email, phone, marketingOptIn, bodyType, frameSize, goal, gender, ageRange, heightRange, weightRange }) {
-  // RPC argument names match the function signature (p_*). Defensive: include
-  // landing-page fields so the function's COALESCE-on-update preserves them
-  // even if phase 1 dropped.
+  // RPC argument names match the function signature (p_*). All landing-page
+  // and scan fields ride along — this is the only DB write per visitor, so
+  // every column lands in this single call.
   const rpcPayload = {
     p_scan_id: scanId,
     p_name: name || null,

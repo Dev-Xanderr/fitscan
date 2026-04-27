@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import useScanStore from '../../context/ScanContext';
 import { loadPoseDetector } from '../../services/poseService';
-import { newScanId, submitInitialScan } from '../../services/supabase';
+import { newScanId } from '../../services/supabase';
 import { GOALS, ROUTES } from '../../utils/constants';
 import { SectionLabel, BracketFrame, TopBar, BottomBar } from '../UI/Telemetry';
 import ConsentGate from '../Privacy/ConsentGate';
@@ -107,20 +107,13 @@ export default function BoothLanding() {
   const handleConsentAccept = () => {
     setConsentAccepted(true);
 
-    // Phase 1 lead capture — fire-and-forget INSERT into Supabase. Captures
-    // gender + goal + optional demographic bands the moment the visitor opts
-    // in to scan. The form-submit upsert later this session merges contact
-    // info onto the same row by scan_id.
-    const id = newScanId();
-    setScanId(id);
-    submitInitialScan({
-      scanId: id,
-      gender,
-      goal: pendingGoal,
-      ageRange,
-      heightRange,
-      weightRange,
-    });
+    // Mint a fresh scan_id for this visitor's session. Used as the upsert
+    // key in the form-submit RPC. We deliberately don't write to Supabase
+    // here — abandoned scans (visitor walks away before the lead form)
+    // would otherwise leave dead rows with no contact info. The single DB
+    // write happens at form submit, capturing gender + goal + demographics
+    // + contact info in one row.
+    setScanId(newScanId());
 
     setPendingGoal(null);
     navigate(ROUTES.SCAN);
