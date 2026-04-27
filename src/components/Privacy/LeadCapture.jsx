@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import useScanStore from '../../context/ScanContext';
 import Button from '../UI/Button';
 import { SectionLabel, BracketFrame } from '../UI/Telemetry';
-import { queueLeadLocally, flushQueuedLeads } from '../../services/supabase';
+import { finaliseLead } from '../../services/supabase';
 
 /**
  * LeadCapture — opt-in inbox delivery form on the routine screen.
@@ -28,20 +28,20 @@ import { queueLeadLocally, flushQueuedLeads } from '../../services/supabase';
  *     tap SEND; the network round-trip is fire-and-forget behind it.
  *
  * Submission strategy (see services/supabase.js):
- *   • Lead is appended to localStorage queue first (never lose a submission
- *     to a flaky network).
- *   • flushQueuedLeads() POSTs the entire queue to Supabase in one
- *     transactional batch. On success the queue clears; on failure it's
- *     retained for retry on the next visitor's submission.
+ *   This is the *second* of two writes per booth visitor. Phase 1 ran on
+ *   landing (gender + goal + optional demographics) keyed by scan_id. This
+ *   form-submit upsert merges contact info onto that same row.
+ *   • finaliseLead() queues the upsert payload to localStorage first
+ *     (never lose a submission to a flaky network), then attempts to flush
+ *     the entire queue to Supabase in one transactional batch. On success
+ *     the queue clears; on failure it's retained for retry on the next
+ *     visitor's submission.
  *   • The success state flips optimistically — visitor sees "ON ITS WAY."
  *     immediately, the network call is fire-and-forget behind it.
- *
- * Payload shape — snake_case so it drops cleanly into a Supabase insert:
- *   { name, email, phone, gender, marketing_opt_in, body_type, goal,
- *     age_range, height_range, weight_range, source, captured_at }
  */
 export default function LeadCapture() {
   const bodyType = useScanStore((s) => s.bodyType);
+  const frameSize = useScanStore((s) => s.frameSize);
   const boothGoal = useScanStore((s) => s.boothGoal);
   const gender = useScanStore((s) => s.userInfo?.gender);
   // Optional demographic buckets picked on landing — null when skipped.
@@ -50,6 +50,10 @@ export default function LeadCapture() {
   const ageRange = useScanStore((s) => s.userInfo?.ageRange);
   const heightRange = useScanStore((s) => s.userInfo?.heightRange);
   const weightRange = useScanStore((s) => s.userInfo?.weightRange);
+  // Row key for the two-phase Supabase write — set on landing when the
+  // visitor accepts consent. We pass it through to finaliseLead so the
+  // upsert merges onto the same row created at scan-start.
+  const scanId = useScanStore((s) => s.scanId);
   const setGender = useScanStore((s) => s.setGender);
   const leadCaptured = useScanStore((s) => s.leadCaptured);
   const setLeadCaptured = useScanStore((s) => s.setLeadCaptured);
@@ -86,37 +90,32 @@ export default function LeadCapture() {
     }
     setError(null);
 
-    const lead = {
+    // Optimistic flip — the visitor sees "ON ITS WAY." instantly. If the
+    // network upsert fails, finaliseLead retains the payload in localStorage
+    // for the next visitor's submission to retry. No reason to make them
+    // wait on a spinner for an action whose failure mode is invisible.
+    setSubmitting(true);
+    setLeadCaptured(true);
+
+    // Fire-and-forget phase-2 upsert. finaliseLead queues to localStorage
+    // first, then attempts the network call (single-batch flush of the
+    // entire queue). Defensive: we pass landing-page fields too in case
+    // phase 1's INSERT dropped — the upsert's MERGE will create a complete
+    // row from this single call if that's all the server has seen.
+    finaliseLead({
+      scanId,
       name: name.trim(),
       email: email.trim().toLowerCase(),
       phone: phone.trim(),
       gender: normaliseGender(gender),
-      marketing_opt_in: optIn,
-      body_type: bodyType || null,
+      marketingOptIn: optIn,
+      bodyType: bodyType || null,
+      frameSize: frameSize || null,
       goal: boothGoal || null,
-      // Optional demographic buckets — null when the visitor skipped TUNE IT.
-      // Strings ("25-34" / "175-185" / "60-75") so marketing can group on the
-      // exact buckets visitors saw without re-binning numeric values.
-      age_range: ageRange || null,
-      height_range: heightRange || null,
-      weight_range: weightRange || null,
-      source: 'booth-fitscan',
-      captured_at: new Date().toISOString(),
-    };
-
-    // Optimistic flip — the visitor sees "ON ITS WAY." instantly. If the
-    // network POST fails, it's still safe in localStorage for the next
-    // submission to drain. No reason to make them wait on a spinner for
-    // an action whose failure mode is invisible to them.
-    setSubmitting(true);
-    setLeadCaptured(true);
-    queueLeadLocally(lead);
-
-    // Fire-and-forget. flushQueuedLeads sends the entire queue (current lead
-    // plus any backed-up leads from earlier offline submissions) and clears
-    // the queue on success. Failures are logged and the queue is retained
-    // for the next visitor to retry.
-    flushQueuedLeads();
+      ageRange: ageRange || null,
+      heightRange: heightRange || null,
+      weightRange: weightRange || null,
+    });
 
     setSubmitting(false);
   };

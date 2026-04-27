@@ -58,6 +58,14 @@ const useScanStore = create((set) => ({
   consentAccepted: false,
   leadCaptured: false,
 
+  // scanId is the row key for the booth's two-phase Supabase write:
+  //   1. INSERT at scan-start  → captures gender + goal + demographics
+  //   2. UPSERT at form submit → merges name/phone/email/body_type onto the same row
+  // Generated as a v4 UUID via crypto.randomUUID() in BoothLanding.pickGoal,
+  // before navigation to /scan. Cleared on reset() so each visitor gets a
+  // fresh row.
+  scanId: null,
+
   // Actions
   setUserInfo: (info) => set((s) => ({ userInfo: { ...s.userInfo, ...info } })),
   setGender: (gender) => set((s) => ({ userInfo: { ...s.userInfo, gender } })),
@@ -85,6 +93,7 @@ const useScanStore = create((set) => ({
   setRoutineError: (routineError) => set({ routineError, routineLoading: false }),
   setConsentAccepted: (consentAccepted) => set({ consentAccepted }),
   setLeadCaptured: (leadCaptured) => set({ leadCaptured }),
+  setScanId: (scanId) => set({ scanId }),
   reset: () =>
     set({
       userInfo: { ...DEFAULT_USER_INFO },
@@ -102,6 +111,7 @@ const useScanStore = create((set) => ({
       routineError: null,
       consentAccepted: false,
       leadCaptured: false,
+      scanId: null,
     }),
 }));
 

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import useScanStore from '../../context/ScanContext';
 import { loadPoseDetector } from '../../services/poseService';
+import { newScanId, submitInitialScan } from '../../services/supabase';
 import { GOALS, ROUTES } from '../../utils/constants';
 import { SectionLabel, BracketFrame, TopBar, BottomBar } from '../UI/Telemetry';
 import ConsentGate from '../Privacy/ConsentGate';
@@ -59,7 +60,7 @@ const WEIGHT_RANGES = [
  */
 export default function BoothLanding() {
   const navigate = useNavigate();
-  const { setBoothGoal, setGender, setConsentAccepted, setUserInfo, reset } = useScanStore();
+  const { setBoothGoal, setGender, setConsentAccepted, setUserInfo, setScanId, reset } = useScanStore();
   const ageRange = useScanStore((s) => s.userInfo?.ageRange);
   const heightRange = useScanStore((s) => s.userInfo?.heightRange);
   const weightRange = useScanStore((s) => s.userInfo?.weightRange);
@@ -105,6 +106,22 @@ export default function BoothLanding() {
 
   const handleConsentAccept = () => {
     setConsentAccepted(true);
+
+    // Phase 1 lead capture — fire-and-forget INSERT into Supabase. Captures
+    // gender + goal + optional demographic bands the moment the visitor opts
+    // in to scan. The form-submit upsert later this session merges contact
+    // info onto the same row by scan_id.
+    const id = newScanId();
+    setScanId(id);
+    submitInitialScan({
+      scanId: id,
+      gender,
+      goal: pendingGoal,
+      ageRange,
+      heightRange,
+      weightRange,
+    });
+
     setPendingGoal(null);
     navigate(ROUTES.SCAN);
   };
