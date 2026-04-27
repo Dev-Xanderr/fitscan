@@ -1,9 +1,9 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import useScanStore from '../../context/ScanContext';
 import Button from '../UI/Button';
 import { SectionLabel, BracketFrame } from '../UI/Telemetry';
-import { finaliseLead } from '../../services/supabase';
+import { finaliseLead, flushQueuedLeads } from '../../services/supabase';
 
 /**
  * LeadCapture — opt-in inbox delivery form on the routine screen.
@@ -64,6 +64,13 @@ export default function LeadCapture() {
   const [optIn, setOptIn] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+
+  // Drain any payloads stuck in localStorage from a prior visitor's failed
+  // submit (transient 5xx, network drop mid-fetch, etc). Fire-and-forget —
+  // failures stay in the queue for the next attempt.
+  useEffect(() => {
+    flushQueuedLeads();
+  }, []);
 
   // Refs let us hop focus forward on Enter without a click. Touchscreen
   // typing is already slow enough without forcing the visitor to find the

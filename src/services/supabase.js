@@ -119,20 +119,45 @@ function writeQueue(queue) {
 }
 
 /**
- * Form submit — the only DB write per visitor. Calls the SECURITY DEFINER
- * RPC `finalise_lead`, which inserts (or merges on rare retry) as the
- * function owner, bypassing the opaque RLS rejection that blocked our
- * direct UPSERT.
+ * Drain the localStorage queue: fire each pending payload at the RPC,
+ * remove confirmed-sent items immediately, leave failures in place.
  *
- * Queues the payload locally first, then attempts to flush the whole
- * queue (current submission + any backed-up payloads from earlier offline
- * tries). RPC payloads can't be batched in one PostgREST call, so we
- * sequentially fire each one — partial successes shrink the queue.
+ * This is the *atomic* version of the old bulk-overwrite drain. Each
+ * successful RPC re-reads the queue and removes only its own payload, so
+ * concurrent calls (or a writeQueue race during a submit) can't lose
+ * unrelated entries.
+ *
+ * Returns the number of payloads sent in this drain attempt.
+ */
+export async function flushQueuedLeads() {
+  if (!isSupabaseConfigured()) return 0;
+  const snapshot = readQueue();
+  if (snapshot.length === 0) return 0;
+
+  let sent = 0;
+  for (const item of snapshot) {
+    try {
+      await callFinaliseLeadRpc(item);
+      // Re-read on success and remove only this scan_id. Atomic per item.
+      const current = readQueue();
+      writeQueue(current.filter((p) => p.p_scan_id !== item.p_scan_id));
+      sent++;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('finalise_lead RPC failed (retained for retry):', err);
+      // Failed items stay in localStorage — the next flush will retry them.
+    }
+  }
+  return sent;
+}
+
+/**
+ * Form submit — the only DB write per visitor. Queues the payload to
+ * localStorage first (never lose a submission to a flaky network), then
+ * fires flushQueuedLeads to drain the whole queue (current + backed-up
+ * payloads from earlier offline tries).
  */
 export async function finaliseLead({ scanId, name, email, phone, marketingOptIn, bodyType, frameSize, goal, gender, ageRange, heightRange, weightRange }) {
-  // RPC argument names match the function signature (p_*). All landing-page
-  // and scan fields ride along — this is the only DB write per visitor, so
-  // every column lands in this single call.
   const rpcPayload = {
     p_scan_id: scanId,
     p_name: name || null,
@@ -148,29 +173,13 @@ export async function finaliseLead({ scanId, name, email, phone, marketingOptIn,
     p_weight_range: weightRange || null,
   };
 
-  // Queue first — never lose a submission to a flaky network.
+  // Queue first. localStorage is the durable record — RPC success is what
+  // removes a payload from it.
   const queue = readQueue();
   queue.push(rpcPayload);
   writeQueue(queue);
 
-  if (!isSupabaseConfigured()) return 0;
-
-  // Drain the queue one RPC at a time. We track which payloads succeeded so
-  // a partial drain doesn't lose the rest.
-  let sent = 0;
-  const remaining = [];
-  for (const item of queue) {
-    try {
-      await callFinaliseLeadRpc(item);
-      sent++;
-    } catch (err) {
-      // eslint-disable-next-line no-console
-      console.warn('finalise_lead RPC failed (retained for retry):', err);
-      remaining.push(item);
-    }
-  }
-  writeQueue(remaining);
-  return sent;
+  return flushQueuedLeads();
 }
 
 /**
