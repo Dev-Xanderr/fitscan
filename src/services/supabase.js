@@ -75,31 +75,55 @@ export function newScanId() {
 }
 
 /**
- * POST a batch of upsert payloads. Throws on non-2xx.
+ * Plain INSERT. Used for phase 1 only — works fine with anon's INSERT
+ * policy and doesn't trigger the post-update RLS quirk that plagues UPSERT.
  */
-async function upsertLeads(rows) {
+async function insertLead(row) {
   if (!isSupabaseConfigured()) {
     throw new Error('Supabase env vars missing — set VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY');
   }
-  // on_conflict=scan_id + Prefer: resolution=merge-duplicates → INSERT new
-  // rows, MERGE onto existing rows that share scan_id. Single round-trip
-  // either way.
-  const url = `${SUPABASE_URL}/rest/v1/${TABLE}?on_conflict=scan_id`;
-  const res = await fetch(url, {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${TABLE}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       apikey: SUPABASE_ANON_KEY,
       Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-      // Don't echo the rows back — saves bandwidth and avoids needing a
-      // SELECT policy on the anon role.
-      Prefer: 'return=minimal,resolution=merge-duplicates',
+      Prefer: 'return=minimal',
     },
-    body: JSON.stringify(rows),
+    body: JSON.stringify(row),
   });
   if (!res.ok) {
     const errText = await res.text().catch(() => '');
-    throw new Error(`Supabase upsert ${res.status}: ${errText.slice(0, 240)}`);
+    throw new Error(`Supabase insert ${res.status}: ${errText.slice(0, 240)}`);
+  }
+}
+
+/**
+ * Phase 2 upsert via RPC. Calls public.finalise_lead — a SECURITY DEFINER
+ * Postgres function that does the INSERT...ON CONFLICT DO UPDATE as the
+ * function owner, bypassing the opaque RLS WITH-CHECK rejection that
+ * blocked our direct UPSERT path. The function does its own app-level
+ * validation (scan_id present, contact fields non-empty) since RLS no
+ * longer guards it.
+ *
+ * See supabase/migrations/2026-04-27_finalise_lead_rpc.sql for SQL.
+ */
+async function callFinaliseLeadRpc(payload) {
+  if (!isSupabaseConfigured()) {
+    throw new Error('Supabase env vars missing — set VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY');
+  }
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/finalise_lead`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      apikey: SUPABASE_ANON_KEY,
+      Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const errText = await res.text().catch(() => '');
+    throw new Error(`Supabase rpc/finalise_lead ${res.status}: ${errText.slice(0, 240)}`);
   }
 }
 
@@ -125,10 +149,10 @@ export async function submitInitialScan({ scanId, gender, goal, ageRange, height
     captured_at: new Date().toISOString(),
   };
   try {
-    await upsertLeads([payload]);
+    await insertLead(payload);
   } catch (err) {
     // eslint-disable-next-line no-console
-    console.warn('Initial scan write failed (phase 2 will compensate):', err);
+    console.warn('Initial scan write failed (phase 2 RPC will compensate):', err);
   }
 }
 
@@ -155,51 +179,57 @@ function writeQueue(queue) {
 }
 
 /**
- * Phase 2: form submit. Queues the upsert payload locally and attempts to
- * flush the entire queue in one transactional batch. On success the queue
- * clears; on failure it's retained for the next visitor to retry.
+ * Phase 2: form submit. Calls the SECURITY DEFINER RPC `finalise_lead`,
+ * which does the INSERT...ON CONFLICT DO UPDATE as the function owner,
+ * bypassing the opaque RLS rejection that blocked our direct UPSERT.
  *
- * Payload shape — only fields that change at form-submit time. The phase-1
- * write has already populated gender/goal/demographics on the same scan_id
- * row, so the upsert's MERGE leaves those alone.
+ * Queues the payload locally first, then attempts to flush the whole
+ * queue (current submission + any backed-up payloads from earlier offline
+ * tries). RPC payloads can't be batched in one PostgREST call, so we
+ * sequentially fire each one — partial successes shrink the queue.
  */
 export async function finaliseLead({ scanId, name, email, phone, marketingOptIn, bodyType, frameSize, goal, gender, ageRange, heightRange, weightRange }) {
-  // Defensive: include landing-page fields too, so the upsert creates a
-  // complete row even if phase 1 dropped. Merge semantics + same scan_id
-  // means no duplicate row when both phases ran.
-  const payload = {
-    scan_id: scanId,
-    name: name || null,
-    email: email || null,
-    phone: phone || null,
-    marketing_opt_in: Boolean(marketingOptIn),
-    body_type: bodyType || null,
-    frame_size: frameSize || null,
-    goal: goal || null,
-    gender: gender || null,
-    age_range: ageRange || null,
-    height_range: heightRange || null,
-    weight_range: weightRange || null,
-    source: 'booth-fitscan',
-    captured_at: new Date().toISOString(),
+  // RPC argument names match the function signature (p_*). Defensive: include
+  // landing-page fields so the function's COALESCE-on-update preserves them
+  // even if phase 1 dropped.
+  const rpcPayload = {
+    p_scan_id: scanId,
+    p_name: name || null,
+    p_email: email || null,
+    p_phone: phone || null,
+    p_marketing_opt_in: Boolean(marketingOptIn),
+    p_body_type: bodyType || null,
+    p_frame_size: frameSize || null,
+    p_gender: gender || null,
+    p_goal: goal || null,
+    p_age_range: ageRange || null,
+    p_height_range: heightRange || null,
+    p_weight_range: weightRange || null,
   };
 
   // Queue first — never lose a submission to a flaky network.
   const queue = readQueue();
-  queue.push(payload);
+  queue.push(rpcPayload);
   writeQueue(queue);
 
-  // Try to flush the whole queue (this submission + anything backed up).
   if (!isSupabaseConfigured()) return 0;
-  try {
-    await upsertLeads(queue);
-    writeQueue([]);
-    return queue.length;
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.warn('Lead flush failed (queue retained for retry):', err);
-    return 0;
+
+  // Drain the queue one RPC at a time. We track which payloads succeeded so
+  // a partial drain doesn't lose the rest.
+  let sent = 0;
+  const remaining = [];
+  for (const item of queue) {
+    try {
+      await callFinaliseLeadRpc(item);
+      sent++;
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn('finalise_lead RPC failed (retained for retry):', err);
+      remaining.push(item);
+    }
   }
+  writeQueue(remaining);
+  return sent;
 }
 
 /**
