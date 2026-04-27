@@ -107,6 +107,16 @@ CREATE POLICY "anon can update unfinalised leads"
   USING (name IS NULL AND captured_at > now() - interval '10 minutes')
   WITH CHECK (true);
 
+-- PostgREST upsert (on_conflict=scan_id + merge-duplicates) needs SELECT
+-- to resolve conflicts. Same tight scope as UPDATE — visibility limited to
+-- unfinalised rows in the last 10 minutes. After form submit, row hides.
+DROP POLICY IF EXISTS "anon can select unfinalised leads" ON public.leads;
+CREATE POLICY "anon can select unfinalised leads"
+  ON public.leads
+  FOR SELECT
+  TO anon
+  USING (name IS NULL AND captured_at > now() - interval '10 minutes');
+
 -- ============================== INDEXES ===================================
 -- Helpful for the marketing dashboard. Cheap to maintain at booth volumes.
 

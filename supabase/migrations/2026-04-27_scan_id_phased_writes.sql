@@ -43,10 +43,24 @@ CREATE POLICY "anon can update unfinalised leads"
   USING (name IS NULL AND captured_at > now() - interval '10 minutes')
   WITH CHECK (true);
 
+-- PostgREST upsert (?on_conflict=scan_id + Prefer: resolution=merge-duplicates)
+-- requires SELECT permission to read the conflicting row for conflict
+-- resolution. Without this, the booth's phase-2 upsert fails with 42501 RLS
+-- violation. Scope is identical to the UPDATE policy: anon sees only
+-- unfinalised rows in the last 10 minutes. After form submit (name set), the
+-- row disappears from the anon role's view.
+DROP POLICY IF EXISTS "anon can select unfinalised leads" ON public.leads;
+CREATE POLICY "anon can select unfinalised leads"
+  ON public.leads
+  FOR SELECT
+  TO anon
+  USING (name IS NULL AND captured_at > now() - interval '10 minutes');
+
 -- ============================== SANITY ====================================
--- After running, both INSERT and UPDATE policies should exist:
+-- After running, three policies should exist:
 --   SELECT policyname, cmd, roles FROM pg_policies WHERE tablename = 'leads';
 --
 -- Expected:
---   "anon can insert leads"            INSERT  {anon}
+--   "anon can insert leads"             INSERT  {anon}
 --   "anon can update unfinalised leads" UPDATE  {anon}
+--   "anon can select unfinalised leads" SELECT  {anon}
